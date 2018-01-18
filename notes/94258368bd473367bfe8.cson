@@ -1,0 +1,62 @@
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "k8s apiserver"
+content: '''
+  # k8s apiserver
+  
+  
+  apiserver启动
+  
+  ```go
+  func main() {
+  	rand.Seed(time.Now().UTC().UnixNano())
+  
+  	s := options.NewServerRunOptions()
+  	s.AddFlags(pflag.CommandLine)
+  
+  	flag.InitFlags()
+  	logs.InitLogs()
+  	defer logs.FlushLogs()
+  
+  	verflag.PrintAndExitIfRequested()
+  
+  	stopCh := server.SetupSignalHandler()
+  	if err := app.Run(s, stopCh); err != nil {
+  		fmt.Fprintf(os.Stderr, "%v\\n", err)
+  		os.Exit(1)
+  	}
+  }
+  ```
+  
+  使用dep init初始化时报错： 
+  ```bash
+  hg is not installed
+  ```
+  
+  需要安装`Mercurial `，下载windows版本客户端TortoiseHg  https://bitbucket.org/tortoisehg/files/downloads/tortoisehg-4.4.1-x64.msi
+  
+  
+  运行时报错：
+  ```
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:72:6: r.EncodeArrayStart undefined (type codec.encDriver has no field or method EncodeArrayStart)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:80:6: r.EncodeMapStart undefined (type codec.encDriver has no field or method EncodeMapStart)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:83:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:91:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:93:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:102:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:109:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:111:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:119:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:126:6: z.EncSendContainerState undefined (type codec.genHelperEncoder has no field or method EncSendContainerState)
+  go3/src/github.com/coreos/etcd/client/keys.generated.go:126:6: too many errors
+  ```
+  原因是`github.com/coreos/etcd/client/keys.generated.go` 对应的版本不对，直接删除再运行`go get github.com/coreos/etcd/client`
+  
+  
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false
+createdAt: "2018-01-04T01:09:48.218Z"
+updatedAt: "2018-01-05T03:37:39.223Z"
