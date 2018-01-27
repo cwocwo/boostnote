@@ -1,0 +1,23 @@
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "Keycloak 应用"
+content: '''
+  Keycloak 应用
+  
+  Kubernetes 支持Keycloak
+  Kubernetes does not provide an OpenID Connect Identity Provider. You can use an existing public OpenID Connect Identity Provider (such as Google, or others). Or, you can run your own Identity Provider, such as CoreOS dex, `Keycloak`, CloudFoundry UAA, or Tremolo Security’s OpenUnison.
+  
+  
+  
+  habor 支持两种认证模式：数据库和ldap。
+  https://github.com/vmware/harbor/blob/master/docs/installation_guide.md
+  auth_mode: The type of authentication that is used. By default, it is db_auth, i.e. the credentials are stored in a database. For LDAP authentication, set this to ldap_auth.
+  
+  
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false
+createdAt: "2018-01-22T03:32:08.610Z"
+updatedAt: "2018-01-23T07:55:21.595Z"

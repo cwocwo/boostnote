@@ -1,0 +1,416 @@
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "通过Keycloak的OpenID Connect访问Kubernetes"
+content: '''
+  # 通过Keycloak的OpenID Connect访问Kubernetes
+  (原文地址：http://int128.hatenablog.com/entry/2018/01/12/113745)
+  ## TL;DR
+  - Kubernetes的认证支持OpenID Connect以及客户端证书和ID /密码。
+  - 通过设置RBAC，您可以控制用户和组的访问。
+  - 以下设置是必需的。
+    - Keycloak（OpenID Connect IdP）
+    - Kube-apiserver（Kubernetes API服务器）
+    - Kubectl（Kubernetes客户端）
+  
+  ## Getting Started
+  ### Keycloak
+  设置Keycloak，以便可以使用OpenID Connect进行身份验证。 在这里，我们假设Keycloak中存在以下领域和用户，并且用户在组中。
+  - 领域名称：hello
+  - 用户名：foo
+  - 组名：admin
+  
+  首先，我将创建一个新的客户端。 在“设置”选项卡上，设置下表中的内容。
+  
+  |参数                    |	值                       |
+  |------------------------|---------------------------|
+  |Client ID               |`kubernetes`               |
+  |Client Prorocol         |openid-connect             |
+  |Access Type             |confidential               |
+  |Valid Redirect URIs     |`urn:ietf:wg:oauth:2.0:oob`|
+  >`urn:ietf:wg:oauth:2.0:oob`
+  This value signals to the Google Authorization Server that the authorization code should be returned in the title bar of the browser, with the page text prompting the user to copy the code and paste it in the application. This is useful when the client (such as a Windows application) cannot listen on an HTTP port without significant client configuration.
+  
+  >When you use this value, your application can then detect that the page has loaded, and can read the title of the HTML page to obtain the authorization code. It is then up to your application to close the browser window if you want to ensure that the user never sees the page that contains the authorization code. The mechanism for doing this varies from platform to platform.
+  
+  >If your platform doesn't allow you to detect that the page has loaded or read the title of the page, you can have the user paste the code back to your application, as prompted by the text in the confirmation page that the OAuth 2.0 server generates.
+  
+  >`urn:ietf:wg:oauth:2.0:oob:auto`
+  This is identical to `urn:ietf:wg:oauth:2.0:oob`, but the text in the confirmation page that the OAuth 2.0 server generates won't instruct the user to copy the authorization code, but instead will simply ask the user to close the window.
+  
+  >This is useful when your application reads the title of the HTML page (by checking window titles on the desktop, for example) to obtain the authorization code, but can't close the page on its own.
+  
+  
+  
+  当您打开Credentials选项卡时，将显示“Secret”，以便记录。 稍后将描述kubectl设置。在“Mappers”选项卡上创建一个新的映射器。 既然我们想在这里控制groups访问，我们设置下表的内容来达到效果。
+  
+  |参数            |	值              |
+  |----------------|------------------|
+  |Name            |`groups`          |
+  |Mapper Type     |	Group Membership|
+  |Token Claim Name|`groups`          |
+  
+  ### kube-apiserver
+  设置为将下表中的参数传递给kube-apiserver。
+  |         参数          |	值                                              |说明                        |
+  |---------------------  |-------------------------------------------------|---------------------------|
+  |`--oidc-issuer-url`    |	`https://keycloak.example.com/auth/realms/hello`|                           |
+  |`--oidc-client-id`     |	`kubernetes`                                    |                           | 
+  |`--oidc-groups-claim`  |	`groups`                                        |                           |
+  |`--oidc-ca-file`       | `/etc/kubernetes/ssl/admin-master1.pem`         |系统会使用此证书更新id_token | 
+  |`--oidc-username-claim`|`sub`                                            |默认为sub，用户的唯一标识符  | 
+  
+  `oidc-issuer-url`必须是https连接，否则Kubernetes会报错：
+  ```
+      - --oidc-issuer-url=http://10.110.22.96:9080/auth/realms/hello
+      - --oidc-client-id=kubernetes
+      - --oidc-groups-claim=groups
+  ```
+  
+  
+  
+  ### kubectl
+  使用OpenID Connect ID令牌配置kubectl以访问Kubernetes。 由于kubectl不进行登录处理，所以需要事先取得ID令牌。 这里我们使用curl命令来获取ID令牌。 在浏览器中访问以下URL。
+  
+  ```
+  https://keycloak.example.com/auth/realms/hello/protocol/openid-connect/auth
+  ?client_id=kubernetes
+  &client_secret=YOUR_CLIENT_SECRET
+  &response_type=code
+  &scope=openid
+  &scope=email
+  &scope=profile
+  &redirect_uri=urn:ietf:wg:oauth:2.0:oob
+  ```
+  执行以下命令。 将`YOUR_CODE`替换为浏览器中显示的代码。
+  
+  ```bash
+  curl -d grant_type=authorization_code \\
+    -d client_id=kubernetes \\
+    -d client_secret=YOUR_CLIENT_SECRET \\
+    -d redirect_uri=urn:ietf:wg:oauth:2.0:oob \\
+    -d code=YOUR_CODE \\
+    https://keycloak.example.com/auth/realms/hello/protocol/openid-connect/token
+  ```
+  
+  以上两步合并为一步(参考：http://www.keycloak.org/docs/3.4/server_admin/  6.6.5)：
+  ```
+  curl http://10.110.22.96:9080/auth/realms/hello/protocol/openid-connect/token \\
+         --insecure \\
+         --data "grant_type=password&scope=openid profile email&username=foo&password=foo&client_id=kubernetes&client_secret=a96f0f6a-eee4-4cb3-a83c-0f12a3c7bcd4&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
+  ```
+  
+  
+  当JSON返回时成功，如下所示。
+  ```json
+  {
+    “access_token”：“...”，
+    “expires_in”：300，
+    “refresh_expires_in”：1800，
+    “refresh_token”：“...刷新令牌...”，
+    “token_type”：“承载者”，
+    “id_token”：“... ID令牌...”，
+    “not-before-policy”：0，
+    “session_state”：“...”，
+    “scope”：“...”
+  }
+  ```
+  示例：
+  ```
+  {
+      "access_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiI5MGMxZjIxYi0zMzU3LTRjZDMtODkwMi1kYWY2NmZhMGQ2MDMiLCJleHAiOjE1MTY2OTUwODAsIm5iZiI6MCwiaWF0IjoxNTE2Njk0NzgwLCJpc3MiOiJodHRwOi8vMTAuMTEwLjIyLjk2OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoia3ViZXJuZXRlcyIsImF1dGhfdGltZSI6MCwic2Vzc2lvbl9zdGF0ZSI6IjNiMjkyMmZiLThiMDMtNDhiOS04ODU1LTk3YThmNzM0ODU2ZCIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJncm91cHMiOlsiL2FkbWluIl0sInByZWZlcnJlZF91c2VybmFtZSI6ImZvbyJ9.Txp3xqwFwmcmamKRpS67shbiwMNefMiF5Lsz52dN7lrCdcGqt2EtvLJqqTCsAIi7qduYn5llNGOGmZg0eUAt6pbauzfuVPF-uwcA-H1g-AwZXF263cfTmdsQeZsKT81qC9ABII9qQbVqZahyv4F1SF0-aBdzZXA3ml9J395KHYaRF8bEAKw5nm01HFKwY9IHOrfev6W2SpmUdQZDd-3ePiiJKbp3WWoAPiD5ZThad2lJ0h16UJoguROdrI3URDjHIP0pkgbscyXwM8qTh9GONMbjM3xoMpuouvzQsF1wyffhhRhD8Ab3lJ-OLGtkppjNnpsaLbZFLvqT4Fe-zb3smQ",
+      "expires_in":300,
+      "refresh_expires_in":1800,
+      "refresh_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiJjMjY1MDIwMi1hMGU3LTQ1ZmUtOGI2OS0wMmM0MWZiYzkwZGUiLCJleHAiOjE1MTY2OTY1ODAsIm5iZiI6MCwiaWF0IjoxNTE2Njk0NzgwLCJpc3MiOiJodHRwOi8vMTAuMTEwLjIyLjk2OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiUmVmcmVzaCIsImF6cCI6Imt1YmVybmV0ZXMiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIzYjI5MjJmYi04YjAzLTQ4YjktODg1NS05N2E4ZjczNDg1NmQiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19fQ.W_WOg6NuA5OAMkvedlo7OWWUSI4YMEpyP2j4GeJ9U1jfjul2-sxcdlnpKrManrCow20P-0h7NB2wAzfvCjRZFXxFp4e6X5UH4H2l2IgIzB-D4ZI8xMN4ZCXSHao3Sbbns_vQ-5MHE_FeTLkYPvpK2Te7rUyx6cmmukBDTE2ufyeMqPd_Lry8Y3YxFpfmhg4scZN-C5F5ad0tM7HKOTRgBvzAXUIRGR67t5PYdmhVbSIORpTgizC9amTbL5X1eWUdeuVSb4Cg5TPoP_4U2uXdI_WrCNmsAakyozAxYITcyveAqPFrAPzSSvFHexu-HLzETmR-6vjeTIW_hhtb6plqeA",
+      "token_type":"bearer",
+      "id_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiIwMDBlYjM3NS0xMDU1LTRhNGItYThlMi1mNGJlNmRlMjYzMjEiLCJleHAiOjE1MTY2OTUwODAsIm5iZiI6MCwiaWF0IjoxNTE2Njk0NzgwLCJpc3MiOiJodHRwOi8vMTAuMTEwLjIyLjk2OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiSUQiLCJhenAiOiJrdWJlcm5ldGVzIiwiYXV0aF90aW1lIjowLCJzZXNzaW9uX3N0YXRlIjoiM2IyOTIyZmItOGIwMy00OGI5LTg4NTUtOTdhOGY3MzQ4NTZkIiwiYWNyIjoiMSIsImdyb3VwcyI6WyIvYWRtaW4iXSwicHJlZmVycmVkX3VzZXJuYW1lIjoiZm9vIn0.gsCzeP6fhJ0uYMaEAloiHws9JyGHRd0_1l4YkS-EFbOZCgV6NlZ_gfuoPSujgYOgiD_bybo7jDBLCOaL7oxJ69bl9y54ZUXb3B_n_55mfaLpEDPxn_NiU1WkE_Njzn1P8BCO3f_xOFxI4gBhCkob6CAXRNKx9RcN7ArHcvQ3JaJgcrA2_LRMWHf6NNg1sMtbz4yuGPH_C80CDYH4xJtY6sMBqyqi0o8--qoVsDX90gfx46_P54OG-A9157H0UjclXZROLuK37RbRe6zvNfE7a0ojgn8enY8Uk6f0Z_GBaV3wskM1Xw2fn6wEXRnCUMGiNObN_z1jdHNXg-6IxRzl9g",
+      "not-before-policy":0,
+      "session_state":"3b2922fb-8b03-48b9-8855-97a8f734856d",
+      "scope":""
+  }
+  ```
+  
+  
+  在新的上下文中配置ID令牌认证。
+  ```bash
+  kubectl config set-credentials hello.k8s.local-oidc \\
+    --auth-provider oidc \\
+    --auth-provider-arg idp-issuer-url=https://keycloak.example.com/auth/realms/hello \\
+    --auth-provider-arg client-id=kubernetes \\
+    --auth-provider-arg client-secret=YOUR_CLIENT_SECRET \\
+    --auth-provider-arg id-token=ID令牌 \\
+    --auth-provider-arg refresh-token=刷新令牌
+  
+  kubectl config set-context hello.k8s.local-oidc --cluster hello.k8s.local --user hello.k8s.local-oidc
+  ```
+  示例
+  ```bash
+  kubectl config set-credentials hello.k8s.local-oidc \\
+    --auth-provider oidc \\
+    --auth-provider-arg idp-issuer-url=https://10.110.22.96:9443/auth/realms/hello \\
+    --auth-provider-arg client-id=kubernetes \\
+    --auth-provider-arg client-secret=a96f0f6a-eee4-4cb3-a83c-0f12a3c7bcd4 \\
+    --auth-provider-arg id-token=eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiIwMDBlYjM3NS0xMDU1LTRhNGItYThlMi1mNGJlNmRlMjYzMjEiLCJleHAiOjE1MTY2OTUwODAsIm5iZiI6MCwiaWF0IjoxNTE2Njk0NzgwLCJpc3MiOiJodHRwOi8vMTAuMTEwLjIyLjk2OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiSUQiLCJhenAiOiJrdWJlcm5ldGVzIiwiYXV0aF90aW1lIjowLCJzZXNzaW9uX3N0YXRlIjoiM2IyOTIyZmItOGIwMy00OGI5LTg4NTUtOTdhOGY3MzQ4NTZkIiwiYWNyIjoiMSIsImdyb3VwcyI6WyIvYWRtaW4iXSwicHJlZmVycmVkX3VzZXJuYW1lIjoiZm9vIn0.gsCzeP6fhJ0uYMaEAloiHws9JyGHRd0_1l4YkS-EFbOZCgV6NlZ_gfuoPSujgYOgiD_bybo7jDBLCOaL7oxJ69bl9y54ZUXb3B_n_55mfaLpEDPxn_NiU1WkE_Njzn1P8BCO3f_xOFxI4gBhCkob6CAXRNKx9RcN7ArHcvQ3JaJgcrA2_LRMWHf6NNg1sMtbz4yuGPH_C80CDYH4xJtY6sMBqyqi0o8--qoVsDX90gfx46_P54OG-A9157H0UjclXZROLuK37RbRe6zvNfE7a0ojgn8enY8Uk6f0Z_GBaV3wskM1Xw2fn6wEXRnCUMGiNObN_z1jdHNXg-6IxRzl9g \\
+    --auth-provider-arg refresh-token=eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiJjMjY1MDIwMi1hMGU3LTQ1ZmUtOGI2OS0wMmM0MWZiYzkwZGUiLCJleHAiOjE1MTY2OTY1ODAsIm5iZiI6MCwiaWF0IjoxNTE2Njk0NzgwLCJpc3MiOiJodHRwOi8vMTAuMTEwLjIyLjk2OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiUmVmcmVzaCIsImF6cCI6Imt1YmVybmV0ZXMiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIzYjI5MjJmYi04YjAzLTQ4YjktODg1NS05N2E4ZjczNDg1NmQiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19fQ.W_WOg6NuA5OAMkvedlo7OWWUSI4YMEpyP2j4GeJ9U1jfjul2-sxcdlnpKrManrCow20P-0h7NB2wAzfvCjRZFXxFp4e6X5UH4H2l2IgIzB-D4ZI8xMN4ZCXSHao3Sbbns_vQ-5MHE_FeTLkYPvpK2Te7rUyx6cmmukBDTE2ufyeMqPd_Lry8Y3YxFpfmhg4scZN-C5F5ad0tM7HKOTRgBvzAXUIRGR67t5PYdmhVbSIORpTgizC9amTbL5X1eWUdeuVSb4Cg5TPoP_4U2uXdI_WrCNmsAakyozAxYITcyveAqPFrAPzSSvFHexu-HLzETmR-6vjeTIW_hhtb6plqeA
+  
+  kubectl config set-context hello.k8s.local-oidc --cluster cluster96 --user hello.k8s.local-oidc
+  ```
+  
+  
+  让我们在ID令牌认证的上下文中运行kubectl。
+  ```bash
+  kubectl --context hello.k8s.local-oidc get po
+  Unable to connect to the server: Get https://10.110.22.96:9443/auth/realms/hello/.well-known/openid-configuration: x509: cannot validate certificate for 10.110.22.96 because it doesn't contain any IP SANs
+  ```
+  此处因为证书生成时 CN 为localhost， 最好使用域名生成证书， 并且在使用填写域名而非IP地址。将idp-issuer-url中的`10.110.22.96`改为`localhost`，再次运行:
+  ```bash
+  # kubectl --context hello.k8s.local-oidc get po
+  Unable to connect to the server: Get https://localhost:9443/auth/realms/hello/.well-known/openid-configuration: x509: certificate signed by unknown authority
+  ```
+  > 参考 
+  > http://blog.csdn.net/E_mac/article/details/42493599  
+  > http://blog.csdn.net/rznice/article/details/52250397
+  > [Docker X509 证书错误的终极解决办法](http://www.linuxidc.com/Linux/2016-06/132693.htm)
+  > [Nginx反向代理Docker Registry](http://blog.csdn.net/xxb249/article/details/79138370)
+    获取证书：echo -n | openssl s_client -showcerts -connect localhost:9443 2>/dev/null | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' > keycloak.crt
+  
+  把CA放到/etc/pki/ca-trust/source/anchors，在命令行运行/bin/update-ca-trust，这样证书就导入到系统中去了。
+  以上未达到效果，仍然报错。
+  
+  遂使用k8s已有的证书文件，首先合并公钥和私钥：
+  ```
+  cat admin-master1.pem admin-master1-key.pem >admin-master1-combined.pem
+  ```
+  生成pkcs12格式的证书（注意 name 参数设置为 server）：
+  ```
+  openssl pkcs12 -export -out admin-master1.pkcs12 -in admin-master1-combined.pem -name "server"
+  ```
+  导入到jks中：
+  ```bash
+  # keytool -importkeystore -srckeystore admin-master1.pkcs12 -srcstoretype pkcs12 -destkeystore keycloak.keystore -alias server
+  Importing keystore admin-master1.pkcs12 to keycloak.keystore...
+  Enter destination keystore password:  
+  Re-enter new password: 
+  Enter source keystore password:  
+  
+  Warning:
+  The JKS keystore uses a proprietary format. It is recommended to migrate to PKCS12 which is an industry standard format using "keytool -importkeystore -srckeystore keycloak.keystore -destkeystore keycloak.keystore -deststoretype pkcs12".
+  ```
+  > - 第一次keystore密码不一致，导致错误：
+  >[Caused by: java.security.UnrecoverableKeyException: Cannot recover key](https://stackoverflow.com/questions/15967650/caused-by-java-security-unrecoverablekeyexception-cannot-recover-key)
+  > - alias不存在
+  >[PFX to JKS keytool conversion: Alias <*> does not exist](https://stackoverflow.com/questions/13334422/pfx-to-jks-keytool-conversion-alias-does-not-exist)
+  
+  
+  拷贝keystore到keycloak的配置文件目录：
+  ```
+  cp keycloak.keystore /root/keycloak-3.4.3.Final/standalone/configuration/
+  ```
+  修改keycloak配置文件`standalone/configuration/standalone.xml`, keystore path改为keycloak.keystore：
+  ```xml
+  <server-identities>
+      <ssl>
+          <keystore path="keycloak.keystore" relative-to="jboss.server.config.dir" keystore-password="password" alias="server" key-password="password" generate-self-signed-certificate-host="localhost"/>
+      </ssl>
+  </server-identities>
+  ```
+  
+  再次尝试：
+  ```bash
+  # kubectl get po -n system
+  error: You must be logged in to the server (Unauthorized)
+  ```
+  设置日志级别：
+  ```bash
+  #  kubectl --context hello.k8s.local-oidc --v 4 get po 
+  I0125 16:39:14.061157   27153 cached_discovery.go:126] skipped caching discovery info due to Unauthorized
+  I0125 16:39:14.061334   27153 helpers.go:207] server response object: [{
+    "metadata": {},
+    "status": "Failure",
+    "message": "Unauthorized",
+    "reason": "Unauthorized",
+    "code": 401
+  }]
+  F0125 16:39:14.061354   27153 helpers.go:120] error: You must be logged in to the server (Unauthorized)
+  ```
+  以上错误查看apiserver日志，发现：
+  ```
+  E0126 08:21:20.905003       1 authentication.go:64] Unable to authenticate the request due to an error: [invalid bearer token, [invalid bearer token, [crypto/rsa: verification error, oidc: JWT claims invalid: invalid claim value: 'iss'. expected=https://localhost:9443/auth/realms/hello, found=http://localhost:9080/auth/realms/hello.]]]
+  ```
+  以为之前获取token的时候使用的是http连接，改为https，重新获取token：
+  ```
+  curl https://localhost:9443/auth/realms/hello/protocol/openid-connect/token \\
+         --insecure \\
+         --data "grant_type=password&scope=openid profile email&username=foo&password=foo&client_id=kubernetes&client_secret=a96f0f6a-eee4-4cb3-a83c-0f12a3c7bcd4&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
+  ```
+  使用新获取的token更新credentials，再次请求：
+  
+  ```bash
+  % kubectl --context hello.k8s.local-oidc get po
+  Error from server (Forbidden): pods is forbidden: User "https://keycloak.example.com/auth/realms/hello#5bd79e68-2d73-4033-aef6-29f3798d31f3" cannot list pods in the namespace "default"
+  ```
+  
+  此时应该返回`Forbidden`，因为你还没有授予当前用户的任何权限（url中的`5bd79e68-2d73-4033-aef6-29f3798d31f3`是keycloak中`foo`user的id）。 如果返回Unauthorized的错误，认证失败，请重新确认设置。 对于故障排除，使用`kubectl --v = 10`输出调试日志很有用。
+  
+  将管理员权限授予当前用户。
+  ```yaml
+  # rbac-oidc.yaml
+  kind: ClusterRoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1
+  metadata:
+    name: keycloak-admin-group
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cluster-admin
+  subjects:
+  - kind: User
+    name: https://keycloak.example.com/auth/realms/hello#5bd79e68-2d73-4033-aef6-29f3798d31f3
+  ```
+  
+  ```bash
+  kubectl apply -f rbac-oidc.yaml
+  ```
+  获取Pods，表示已执行成功，如下所示。
+  ```bash
+  % kubectl get po
+  NAME                        READY     STATUS    RESTARTS   AGE
+  echoserver-7f76cc58-w8v4d   1/1       Running   0          2d
+  ```
+  
+  也可以授予组管理员权限。 用`subjects`指定`group`，如下所示。
+  ```yaml
+  kind: ClusterRoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1
+  metadata:
+    name: keycloak-admin-group
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cluster-admin
+  subjects:
+  - kind: Group
+    name: /admin
+  ```
+  您可以通过https://jwt.io解码来检查Keycloak返回的ID令牌的内容。 这对于检查用户名和组名是很有用的。
+  ## refresh_token 更新
+  默认refresh_token的有效期为1800S：
+  ```json
+  {
+    "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiI1MjZiYTAwMS1jYmMyLTRhNTEtYjU5OS1lMDkyOTA2MTZkM2YiLCJleHAiOjE1MTY5NTExMzUsIm5iZiI6MCwiaWF0IjoxNTE2OTUwODM1LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiQmVhcmVyIiwiYXpwIjoia3ViZXJuZXRlcyIsImF1dGhfdGltZSI6MCwic2Vzc2lvbl9zdGF0ZSI6ImY5NzY0NTgzLTNmZDQtNDI5NS1hODA2LTExODUwNDE3ZGI1YSIsImFjciI6IjEiLCJhbGxvd2VkLW9yaWdpbnMiOltdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJncm91cHMiOlsiL2FkbWluIl0sInByZWZlcnJlZF91c2VybmFtZSI6ImZvbyIsImVtYWlsIjoiY3dvY3dvMUBnbWFpbC5jb20ifQ.iMGRWYWbQNHtrLQcgq4ySY00yf2aHeYdoLKM3kXqKSnlQ1iaeLu8jtVjqmkfyHYjeiyF6wEgzeu_MSLnj7XAyUO4FDzHf8K50NyRTG-XbivyLwABtHVA9gUqjW4tpziWSCYXZlQdRa1hf4CAjTZeLdrCtxEzKoRKzyqs1oZh3mioy1cDgWu7cAaMleuOJa3uQE2Zqp22bZd38_bGiPTCDYuyY6aLaGVOgZM2M4XGuecqeCnOjR-tsnvKC8F8XSjk06azVe0cbzFs9BNuC6shagwHtuhEaBaJ6ACd0FLMY8ut-ajJN8BuYSgH9ifFkZ9axtkvWvxQKORM7-XfM0jZMQ",
+    "expires_in": 300,
+    "refresh_expires_in": 1800,
+    "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiI4NmFlM2ZmZS00YmE2LTQxZWQtOTc2OS0yYTg5MjM3OGM4YWQiLCJleHAiOjE1MTY5NTI2MzUsIm5iZiI6MCwiaWF0IjoxNTE2OTUwODM1LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiUmVmcmVzaCIsImF6cCI6Imt1YmVybmV0ZXMiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiJmOTc2NDU4My0zZmQ0LTQyOTUtYTgwNi0xMTg1MDQxN2RiNWEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsidW1hX2F1dGhvcml6YXRpb24iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19fQ.KR47M-AhDdIGYHHeLW8FP5Iob_Pl1hobDbfE5HffiqndRtBI3ubHh9_77uGZq26MTe2ikVj4iZ_05evsQfxd6SGeB_tEpxmquhvJYHTJiwtcBYqSIKr4ODG9IQkuwGGN4aZ5tn7qZno8K1cH27Q7c3DuH5C0dmZ9pPbIL8wlQTEUXxje-OqBLpj33_ghwnHkOghVq2FMsHAVXGZLJXI_HF-laAIOzGptz6CAIf-Bo950ZbXKN3J57Bo-gq60QstUTnL3eQqFiwItkN0kHFuZ_wcqIfMXqCdQ5cigjE6SL3yeL-HLdQq-x4oIv1t6RwoVM5heN8eQaox8bDVUDVUC7g",
+    "token_type": "bearer",
+    "id_token": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiIxMzhjOTE1OS1hZDZkLTQ1NTUtOWJkNi1iYzU3MjE5MGQ2ZmYiLCJleHAiOjE1MTY5NTExMzUsIm5iZiI6MCwiaWF0IjoxNTE2OTUwODM1LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiSUQiLCJhenAiOiJrdWJlcm5ldGVzIiwiYXV0aF90aW1lIjowLCJzZXNzaW9uX3N0YXRlIjoiZjk3NjQ1ODMtM2ZkNC00Mjk1LWE4MDYtMTE4NTA0MTdkYjVhIiwiYWNyIjoiMSIsImdyb3VwcyI6WyIvYWRtaW4iXSwicHJlZmVycmVkX3VzZXJuYW1lIjoiZm9vIiwiZW1haWwiOiJjd29jd28xQGdtYWlsLmNvbSJ9.al0LjhLeS87JIvNhSark6WITBFM4z55FDc-MiGV-s2jU2SBKJFTsjVCyijwtg10uzsdXwf3CNF_BtbK2rQsnyxK0D7poztuyyztqawE84BJVz9T5DKytVYYO9EO1QfD86_DvBqlrRzjGphzDxU-C4NORNHpyrjmMVJsO5hvO-PwSaPSOZDd33yzmie42WTWlFgYKT-eaGsY-yh6iK6wxfYRvOt8shWOSZY8MA-KZ4RMj5hn5zD4r_FT7L0CG7FkgpSK9w5wowizSOknrVD91OP9oGpc47i5uVnv539p6sNpab0qu3QsgT38Jt3CHtWDvQ5xs-2D40O92xU1w9Ts6-A",
+    "not-before-policy": 0,
+    "session_state": "f9764583-3fd4-4295-a806-11850417db5a",
+    "scope": ""
+  }
+  ```
+  若refresh_token过期，则需要重新获取，操作繁琐，因此我写了个shell脚本 `update-refresh-token.sh`:
+  ```shell
+  #!/bin/bash
+  REFRESH_TOKEN=`curl https://localhost:9443/auth/realms/hello/protocol/openid-connect/token \\
+          --insecure  \\
+          --data "grant_type=password&scope=openid profile email&username=foo&password=foo&client_id=kubernetes&client_secret=a96f0f6a-eee4-4cb3-a83c-0f12a3c7bcd4&redirect_uri=urn:ietf:wg:oauth:2.0:oob" \\
+          | python keycloak-token-parser.py`
+  # > keycloak-refresh-token.txt
+  #REFRESH_TOKEN=`cat keycloak-refresh-token.txt`
+  echo '-------------------------------------------------------------------------------------------------------'
+  echo $REFRESH_TOKEN
+  
+  kubectl config set-credentials keycloak \\
+    --auth-provider oidc \\
+    --auth-provider-arg idp-issuer-url=https://localhost:9443/auth/realms/hello \\
+    --auth-provider-arg client-id=kubernetes \\
+    --auth-provider-arg client-secret=a96f0f6a-eee4-4cb3-a83c-0f12a3c7bcd4 \\
+    --auth-provider-arg idp-certificate-authority=/etc/kubernetes/ssl/admin-master1.pem \\
+    --auth-provider-arg=extra-scopes=groups \\
+    --auth-provider-arg id-token=eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJZbjdiSV9XRFViYmlyel96UHlHd25NblpqX1J4NUkzUjl6c3BqUDY0blJzIn0.eyJqdGkiOiI2NTZkNDVlOS1iYmRmLTQ0Y2EtYTdlMy00YWUwYzI3N2YyNzIiLCJleHAiOjE1MTY4ODE4NTQsIm5iZiI6MCwiaWF0IjoxNTE2ODgxNTU0LCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjkwODAvYXV0aC9yZWFsbXMvaGVsbG8iLCJhdWQiOiJrdWJlcm5ldGVzIiwic3ViIjoiNWJkNzllNjgtMmQ3My00MDMzLWFlZjYtMjlmMzc5OGQzMWYzIiwidHlwIjoiSUQiLCJhenAiOiJrdWJlcm5ldGVzIiwiYXV0aF90aW1lIjowLCJzZXNzaW9uX3N0YXRlIjoiMzMyMjBjZmEtYTdjYS00NTZjLWEyMDktMmM3ZDQ5N2ExYzhkIiwiYWNyIjoiMSIsImdyb3VwcyI6WyIvYWRtaW4iXSwicHJlZmVycmVkX3VzZXJuYW1lIjoiZm9vIn0.NBA7dxQpz2rexLICFB3U9mBtMqgdbMrQLFocrGfmqRcWVP3PLy2Iqt4GhTlTpcw1KlaSwdFw6BGZ9gy55MrSK-2S_a8_tHnVa0jiInzcOttNrpTjmKe_7EAg4IwOPhYs5CJwANRQzMChomXpzyTpbsyxRLbOMjCjmB2pPHvu1ya8H7uB-WxgnKx7CG6Legb0g41zD_qFvtgslAyiHE8fFUzKWXHcbfRZcddkTsq2dz4KlLTVmeyyuPQbUsx-m4GkkNiNyRKvE9B7_GNJ5RGOns2I1pswz8bB9kq6q0bKQmZl-SMhQmT_wJnyfS0zHNLmSxdpL2Xa-uXy4cUGYgXhBg \\
+    --auth-provider-arg refresh-token=$REFRESH_TOKEN
+  
+  ```
+  
+  
+  ## 总结
+  Keycloak作为OpenID Connect IdP并介绍了如何使用ID令牌访问Kubernetes。
+  
+  目前，由于kubectl与OpenID Connect的授权码流不对应，需要自行获取ID令牌。 命令行工具需要完善。
+  
+  ---
+  参考：
+  [Kubernetes Authenticating](https://v1-8.docs.kubernetes.io/docs/admin/authentication/)
+  [KeycloakのOpenID ConnectでKubernetesにアクセスする](http://int128.hatenablog.com/entry/2018/01/12/113745)
+  [Kubernetes 指南（中文）](https://feisky.gitbooks.io/kubernetes/)
+  [k8s-oidc-helper(github)](https://github.com/micahhausler/k8s-oidc-helper)
+  [OpenID Connect – Enabling Your Team](http://www.devoperandi.com/openid-connect-enabling-your-team/)
+  [Kubernetes Handbook](https://jimmysong.io/kubernetes-handbook/) 
+    - [Kubernetes 中的用户与身份认证授权](https://jimmysong.io/kubernetes-handbook/guide/authentication.html)
+    
+  [Kubernetes Authentication – OpenID Connect](http://www.devoperandi.com/kubernetes-authentication-openid-connect/)
+  [json格式化工具](https://jsonformatter.org/)
+  [convert certificate from pem into jks](https://stackoverflow.com/questions/22296312/convert-certificate-from-pem-into-jks)
+  [Using OAuth 2.0 for Installed Applications-google](https://developers.google.com/api-client-library/python/auth/installed-app)
+  [Using OAuth 2.0 for Installed Applications-中文翻译](http://wiki.jikexueyuan.com/project/google-oauth-2/installed-apps.html)
+  
+  >`urn:ietf:wg:oauth:2.0:oob`
+  这个参数值会告知谷歌认证服务器应该用浏览器的标题栏将授权码返回到客户端，并且还带有一个文本页面提示用户将密码复制并粘贴到应用程序中（就像上面的截图一样）。这在当客户端（例如一个 Windows 应用程序）在系统不作出显著配置的前提下无法监听 HTTP 端口时十分有用。
+  >
+  >当您使用这个参数值，您的应用程序可以检测到页面已经载入，并且可以读取 HTML 页面的标题来获得授权码。接下来就要靠您的应用程序来关闭浏览器窗口了，如果您想确保用户永远都不会看见包含授权码的页面的话，其实现方式根据平台的不同而不同。
+  >
+  >如果您的目标平台不允许您检测页面是否已经载入，或者不允许您检测页面的标题，那么您可以要求用户手动将密码复制粘贴到您的应用程序内，就和页面本身的文字说明一样。
+  >
+  >`urn:ietf:wg:oauth:2.0:oob:auto`
+  该参数和 `urn:ietf:wg:oauth:2.0:oob` 是一致的，但返回的确认页面不会有文字提示用户手动复制授权码，取而代之的是要求用户关闭浏览器窗口。
+  >
+  >在您的应用程序能读取 HTML 标题（例如，通过在桌面上检查窗口标题）获得授权码，但是却没法自动关闭页面的时候，这种方法就显得有用。
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false
+createdAt: "2018-01-23T01:18:49.903Z"
+updatedAt: "2018-01-27T02:07:27.312Z"

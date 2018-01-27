@@ -1,0 +1,19 @@
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "RabbitMq binding丢失问题"
+content: '''
+  # RabbitMq binding丢失问题
+  
+  RabbitMq 重启后导致binding丢失。此问题的在3.6.11之前的版本都有发生
+  
+  https://groups.google.com/forum/#!topic/rabbitmq-users/HTh0Hyounvs
+  https://github.com/rabbitmq/rabbitmq-server/issues/887
+  
+  官方在google中回答：
+   > There is no progress on this issue and won't be before 3.6.11 and 3.7.0 ship (later this month).
+'''
+tags: []
+isStarred: false
+isTrashed: false
+createdAt: "2018-01-23T12:02:52.875Z"
+updatedAt: "2018-01-23T12:05:40.847Z"
