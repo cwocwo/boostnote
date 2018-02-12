@@ -1,0 +1,19 @@
+createdAt: "2018-02-08T05:58:07.705Z"
+updatedAt: "2018-02-08T05:59:01.118Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "Go 资源"
+content: '''
+  # Go 资源
+  
+  、
+  revel iris gin
+  
+  ## Go Web开发框架
+  revel
+  https://github.com/revel/revel
+  revel iris gin
+'''
+tags: []
+isStarred: false
+isTrashed: false

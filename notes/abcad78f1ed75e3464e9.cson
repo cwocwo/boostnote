@@ -1,0 +1,23 @@
+createdAt: "2018-02-09T01:08:12.332Z"
+updatedAt: "2018-02-09T01:20:10.021Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "Docker 使用场景"
+content: '''
+  # Docker 使用场景
+  
+  ## [为 Java EE 应用提供的 9 种 Docker 方法](https://www.oschina.net/translate/9-docker-recipes-for-java-ee-applications)
+  介绍了一个简单 Docker 容器配置方法：包括应用服务器和数据库，几个高级应用方法：包括前端负载、缓存、消息中间件和集群。
+  英文原文：[9 Docker Recipes for Java EE Applications](https://www.voxxed.com/2015/03/9-docker-recipes-for-java-ee-applications/)
+  
+  ## [八个 Docker 的真实应用场景](https://www.oschina.net/news/58585/8-ways-to-use-docker-in-the-real-world)
+  介绍了常用的8个Docker的真实使用场景，分别是简化配置、代码流水线管理、提高开发效率、隔离应用、整合服务器、调试能力、多租户环境、快速部署。
+  英文原文：[8 Ways to Use Docker in the Real World](http://blog.flux7.com/blogs/docker/8-ways-to-use-docker-in-the-real-world)
+  
+  
+  ## [使用 Docker 容器应该避免的 10 个事情](https://www.oschina.net/translate/10-things-to-avoid-in-docker-containers)
+  英文原文：[10 things to avoid in docker containers](http://developerblog.redhat.com/2016/02/24/10-things-to-avoid-in-docker-containers/)
+'''
+tags: []
+isStarred: false
+isTrashed: false

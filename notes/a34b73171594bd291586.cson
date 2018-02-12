@@ -1,0 +1,432 @@
+createdAt: "2018-01-27T05:46:04.761Z"
+updatedAt: "2018-02-12T10:17:14.582Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "使用halyard docker镜像安装spinnaker"
+content: '''
+  
+  # 使用halyard docker镜像安装spinnaker
+  
+  ## 获取镜像
+  docker pull gcr.io/spinnaker-marketplace/halyard:stable
+  
+  ## 创建halyard配置文件Volume目录
+  ```
+  mkdir ~/.hal
+  ```
+  
+  ## 启动镜像修改java参数
+  `docker run --name halyard-proxy-set  -it gcr.io/spinnaker-marketplace/halyard:stable`
+  
+  从容器中拷贝出文件：
+  `docker cp  90b8b50e84aa:/opt/halyard/bin/halyard .`
+  
+  打开文件`halyard`:
+  ```
+  DEFAULT_JVM_OPTS='"-Dhttp.nonProxyHosts=localhost,127.0.0.1,10.110.22.96,8.8.8.8" "-Dhttp.proxyHost=10.110.22.96" "-Dhttp.proxyPort=8118" "-Dhttps.proxyHost=10.110.22.96" "-Dhttps.proxyPort=8118" "-Djava.security.egd=file:/dev/./urandom" "-Dspring.config.location=/opt/spinnaker/config/"'
+  ```
+  拷贝回容器：
+  `docker cp halyard 90b8b50e84aa:/opt/halyard/bin/`
+  
+  停止容器，把容器制作成镜像：
+  docker stop 90b8b50e84aa
+  docker commit 90b8b50e84aa luckyfly/halyard-proxy:1.0
+  
+  启动halyard 容器：
+  docker run -p 8084:8084 -p 9000:9000 \\
+      --name halyard --rm \\
+      -v ~/.hal:/root/.hal \\
+      -it \\
+      luckyfly/halyard-proxy:1.0
+  运行命令：
+  docker exec -it halyard bash
+  
+  设置docker-registry
+  ```
+  hal config provider docker-registry  enable
+  
+  echo 100915|hal config provider docker-registry account add my-docker-registry \\
+      --address index.docker.io \\
+      --repositories library/alpine library/ubuntu  library/centos library/nginx cwocwo/get-started  \\
+      --username cwocwo \\
+      --password
+  ``` 
+  ```  
+  echo Harbor12345 | hal config provider docker-registry account add harbor96-iop \\
+      --address registry.cluster96.com:5000 \\
+      --repositories library/appscode/test-server \\
+      --username admin \\
+      --password --no-validate
+  ```
+  
+  报错：
+  - WARNING You have not yet selected a version of Spinnaker to
+    deploy.
+  ? Options include: 
+    - 1.4.2
+    - 1.5.4
+  
+  Problems in default.provider.dockerRegistry.my-docker-registry:
+  ! ERROR Unable to reach repository: 404 Not Found.
+  
+  设置版本：
+  hal config version edit --version 1.5.4
+      
+  重新运行，报错：
+  - Add the my-docker-registry account
+    Failure
+  Problems in default.provider.dockerRegistry.my-docker-registry:
+  ! ERROR Unable to reach repository: 404 Not Found.
+  
+  - Failed to add account my-docker-registry for provide
+  -
+  设置代理：
+  ```
+  export https_proxy=http://10.110.22.96:8118  
+  export http_proxy=http://10.110.22.96:8118
+  export no_proxy==localhost,127.0.0.0/8,registry.cluster96.com,10.110.22.0/24,slave1,slave1.cluster96,registry.iop.com,10.110.17.0/24,master1,master1.cluster96,master3,master3.cluster96,master2,master2.cluster96
+  ```
+  设置kubernetes account
+  ```
+  hal config provider kubernetes enable
+  hal config provider kubernetes account add spinnaker-service-account --docker-registries my-docker-registry --kubeconfig-file /root/.kube/config --context admin-cluster96 --namespaces spinnaker
+  ```
+  
+  ### 设置storage
+  
+  docker run -p 9001:9000 --name minio1 -v /mnt/data:/data -v /mnt/config:/root/.minio minio/minio server /data
+  ```
+  Created minio configuration file successfully at /root/.minio
+  Drive Capacity: 35 GiB Free, 97 GiB Total
+  
+  Endpoint:  http://172.17.0.4:9000  http://127.0.0.1:9000
+  AccessKey: GTCW7EOYXH2YD1QHUMU3 
+  SecretKey: Osfye8kPFOElhaYF9fJHFW2YuEmj6iR4JZXairGw 
+  
+  Browser Access:
+     http://172.17.0.4:9000  http://127.0.0.1:9000
+  
+  Command-line Access: https://docs.minio.io/docs/minio-client-quickstart-guide
+     $ mc config host add myminio http://172.17.0.4:9000 GTCW7EOYXH2YD1QHUMU3 Osfye8kPFOElhaYF9fJHFW2YuEmj6iR4JZXairGw
+  
+  Object API (Amazon S3 compatible):
+     Go:         https://docs.minio.io/docs/golang-client-quickstart-guide
+     Java:       https://docs.minio.io/docs/java-client-quickstart-guide
+     Python:     https://docs.minio.io/docs/python-client-quickstart-guide
+     JavaScript: https://docs.minio.io/docs/javascript-client-quickstart-guide
+     .NET:       https://docs.minio.io/docs/dotnet-client-quickstart-guide
+  
+  ```
+  ```
+  echo Osfye8kPFOElhaYF9fJHFW2YuEmj6iR4JZXairGw  | hal config storage s3 edit --endpoint http://10.110.22.96:9001 \\
+      --access-key-id GTCW7EOYXH2YD1QHUMU3 \\
+      --secret-access-key
+      
+      hal config storage edit --type s3
+  
+  ```
+  
+  
+  
+  执行超时：
+  ```
+  root@1ad251723167:/workdir# hal config provider docker-registry account add my-docker-registry \\
+  >     --address index.docker.io \\
+  >     --repositories cwocwo/spinnaker  \\
+  >     --username cwocwo \\
+  >     --client-timeout-millis 600000 \\
+  >     --password
+  Your docker registry password: 
+  + Get current deployment
+    Success
+  / Add the my-docker-registry account
+    Timed out
+  Problems in Global:
+  ! ERROR Unexpected exception:
+    DaemonTaskInterrupted(interruptedTime=1517040475999, message=Task interrupted
+    without cause at Sat Jan 27 08:07:55 UTC 2018)
+  
+  - Failed to add account my-docker-registry for provider
+    dockerRegistry. Task killed because it was taking too long.
+  ```
+  ```
+  2018-01-27 08:06:53.843  WARN 7 --- [     Thread-145] c.n.s.h.core.tasks.v1.TaskRepository     : Interrupting task [Add the my-docker-registry account] (70d09179-fe06-4a9b-aed2-682ed7f4fa0d) - RUNNING that timed out after 60000 millis.
+  2018-01-27 08:07:55.999  WARN 7 --- [     Thread-144] c.n.s.h.c.v.v1.HalconfigValidator        : Unexpected error comparing versions: com.netflix.spinnaker.halyard.core.error.v1.HalException: Could not load "versions.yml" from config bucket: connect timed out.
+  2018-01-27 08:07:55.999 ERROR 7 --- [     Thread-144] c.n.s.halyard.core.DaemonResponse        : Unknown exception encountered: 
+  ```
+  
+  
+  
+  修改源代码：
+  
+  
+  git branch  change_client_timeout version-0.40.0
+  git checkout change_client_timeout
+  
+  
+  端口配置
+  hal config security authn oauth2 edit \\
+    --client-id $CLIENT_ID \\
+    --client-secret $CLIENT_SECRET \\
+    --provider $PROVIDER
+  
+  hal config security authn oauth2 edit --pre-established-redirect-uri https://10.110.22.93:8084/login
+  
+  
+  sudo ufw allow 9090
+  sudo ufw allow 8084
+  
+  参考[Exposing Spinnaker to End Users](https://blog.spinnaker.io/exposing-spinnaker-to-end-users-4808bc936698) :
+  ```
+  echo "host: 0.0.0.0" | tee \\
+       .hal/default/service-settings/gate.yml \\
+       .hal/default/service-settings/deck.yml
+  
+  hal config security ui edit \\
+      --override-base-url http://spinnaker.iop.com:9000
+  
+  hal config security api edit \\
+      --override-base-url http://spinnaker.iop.com:8084
+  ```
+  
+  
+  ~/.hal/default/staging/gate-local.yml
+  ```
+  spring:
+    oauth2:
+      client:
+        clientId: spinnaker
+        clientSecret: 7b777880-e309-4803-8272-b1c17b4d37a8
+        userAuthorizationUri: http://10.110.22.96:9080/auth/realms/hello/protocol/openid-connect/auth # Used to get an authorization code
+        accessTokenUri:       http://10.110.22.96:9080/auth/realms/hello/protocol/openid-connect/token # Used to get an access token
+        scope: openid profile email
+      resource:
+        userInfoUri: http://10.110.22.96:9080/auth/realms/hello/protocol/openid-connect/userinfo         # Used to the current user's profile
+      userInfoMapping:        # Used to map the userInfo response to our User
+        email: email
+        firstName: givenName 
+        lastName: familyName 
+        username: name
+  ```
+  
+  完整文件：
+  ```
+  server:
+    port: 8084
+  
+  services:
+    deck:
+      baseUrl: http://localhost:9000
+    orca:
+      baseUrl: http://localhost:8083
+    front50:
+      canaryConfigStore: false
+      baseUrl: http://localhost:8080
+    clouddriver:
+      baseUrl: http://localhost:7002
+  # semi-optional services (Everybody except Netflix needs these):
+    rosco:
+      enabled: true
+      baseUrl: http://localhost:8087
+      # These are here only for Netflix, whose bakery does not support dynamically fetching these properties.
+      # Modifying the details below when rosco.enabled is true will have no effect (do it in the Rosco config).
+      defaults:
+        bakeOptions:
+          - cloudProvider: aws
+            baseImages:
+            - id: trusty
+              shortDescription: v14.04
+              detailedDescription: Ubuntu Trusty Tahr v14.04
+              packageType: DEB
+            - id: ubuntu
+              shortDescription: v12.04
+              detailedDescription: Ubuntu Precise Pangolin v12.04
+              packageType: DEB
+            - id: centos
+              shortDescription: deprecated
+              detailedDescription: CentOS v5.11
+              packageType: RPM
+  # optional services:
+    echo:
+      enabled: false
+    fiat:
+      enabled: false
+    flapjack:
+      enabled: false
+    igor:
+      enabled: false
+    mahe:
+      enabled: false
+    kayenta:
+      enabled: false
+      canaryConfigStore: false
+      baseUrl: http://localhost:8090
+  
+  redis:
+    connection: redis://localhost:6379
+  
+  swagger:
+    enabled: true
+    title: Spinnaker API
+    description:
+    contact:
+    patterns:
+      - .*tasks.*
+      - .*auth.*
+      - .*applications.*
+      - .*securityGroups.*
+      - /search
+      - .*pipelines.*
+      - .*loadBalancers.*
+      - .*instances.*
+      - .*images.*
+      - .*elasticIps.*
+      - .*credentials.*
+      - .*events.*
+      - .*builds.*
+      - .*instanceTypes.*
+      - .*vpcs.*
+      - .*subnets.*
+      - .*networks.*
+      - .*bakery.*
+      - .*executions.*
+  
+  hystrix:
+    command:
+  ## Hystrix Global Defaults
+      default:
+        execution.isolation.thread.timeoutInMilliseconds: 60000
+  ## Command-specific overrides
+      fetchGlobalAccounts:
+        execution.isolation.thread.timeoutInMilliseconds: 2000
+  
+  spring:
+    jackson:
+      mapper:
+        SORT_PROPERTIES_ALPHABETICALLY: true
+      serialization:
+        ORDER_MAP_ENTRIES_BY_KEYS: true
+  security:
+    oauth2:
+      client:
+        clientId: spinnaker
+        clientSecret: 7b777880-e309-4803-8272-b1c17b4d37a8
+        userAuthorizationUri: http://10.110.22.96:9080/auth/realms/hello/protocol/openid-connect/auth # Used to get an authorization code
+        accessTokenUri:       http://10.110.22.96:9080/auth/realms/hello/protocol/openid-connect/token # Used to get an access token
+        scope: openid profile email
+      resource:
+        userInfoUri: http://10.110.22.96:9080/auth/realms/hello/protocol/openid-connect/userinfo         # Used to the current user's profile
+      userInfoMapping:        # Used to map the userInfo response to our User
+        email: email
+        firstName: givenName
+        lastName: familyName
+        username: name  
+  
+  spring.session.store-type: redis
+  
+  ---
+  
+  spring:
+    profiles: googleOAuth
+  
+  security:
+    oauth2:
+      client:
+        # Set these values in your own config file (e.g. spinnaker-local.yml or gate-googleOAuth.yml).
+        # clientId:
+        # clientSecret:
+        accessTokenUri: https://www.googleapis.com/oauth2/v4/token
+        userAuthorizationUri: https://accounts.google.com/o/oauth2/v2/auth
+        scope: "profile email"
+      resource:
+        userInfoUri: https://www.googleapis.com/oauth2/v3/userinfo
+      userInfoMapping:
+        email: email
+        firstName: given_name
+        lastName: family_name
+  
+  ---
+  
+  spring:
+    profiles: azureOAuth
+  
+  security:
+    oauth2:
+      client:
+        # Set these values in your own config file (e.g. spinnaker-local.yml or gate-azureOAuth.yml).
+        # clientId:
+        # clientSecret:
+        accessTokenUri: https://login.microsoftonline.com/${azureTenantId}/oauth2/token
+        userAuthorizationUri: https://login.microsoftonline.com/${azureTenantId}/oauth2/authorize?resource=https://graph.windows.net
+        scope: "profile"
+        clientAuthenticationScheme: query
+      resource:
+        userInfoUri: https://graph.windows.net/me?api-version=1.6
+      userInfoMapping:
+        email: userPrincipalName
+        firstName: givenName
+        lastName: surname
+  
+  ---
+  
+  spring:
+    profiles: githubOAuth
+  
+  security:
+    oauth2:
+      client:
+        # Set these values in your own config file (e.g. spinnaker-local.yml or gate-githubOAuth.yml).
+        # clientId:
+        # clientSecret:
+        userAuthorizationUri: https://github.com/login/oauth/authorize
+        accessTokenUri: https://github.com/login/oauth/access_token
+        scope: user:email
+      resource:
+        userInfoUri: https://api.github.com/user
+      userInfoMapping:
+        email: email
+        firstName:
+        lastName: name
+        username: login
+  ```
+  
+  
+  
+  hal config security authn oauth2 edit \\
+    --client-id spinnaker \\
+    --client-secret 7b777880-e309-4803-8272-b1c17b4d37a8 
+  
+  hal config security authn oauth2 enable
+  
+  hal config security authn oauth2 edit --pre-established-redirect-uri https://spinnaker.iop.com:8084/login
+  ### 创建Servergroup
+  servergroup中要使用docker镜像，因本文配置的index.docker.io的镜像仓库，因此需要为k8s的每个节点设置docker代理：
+  
+  `mkdir /etc/systemd/system/docker.service.d`
+  
+  创建文件 `/etc/systemd/system/docker.service.d/http-proxy.conf` 增加 HTTP_PROXY 配置：
+  ```
+  [Service]
+  Environment="HTTP_PROXY=http://10.110.22.96:8118/"
+  Environment="HTTPS_PROXY=http://10.110.22.96:8118/"
+  Environment="NO_PROXY=localhost,127.0.0.0/8,registry.cluster96.com,10.110.22.0/24,slave1,slave1.cluster96,registry.iop.com,10.110.17.0/24,master1,master1.cluster96,master3,master3.cluster96,master2,master2.cluster96"
+  ```
+  
+  使配置生效:
+  `$ sudo systemctl daemon-reload`
+  
+  重启 Docker:
+  `$ sudo systemctl restart docker`
+  
+  
+  
+  
+  
+  
+  
+  
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false
