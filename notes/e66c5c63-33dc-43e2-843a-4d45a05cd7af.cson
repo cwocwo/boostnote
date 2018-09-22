@@ -1,0 +1,48 @@
+createdAt: "2018-09-15T02:13:26.291Z"
+updatedAt: "2018-09-22T03:34:51.122Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "Harbor nginx代理配置"
+content: '''
+  # Harbor nginx代理配置
+  
+  ```
+  server {
+    listen 443;
+    server_name 172.16.0.121;
+    ssl on;
+    ssl_certificate   \\etc\\nginx\\key\\cert.crt;
+    ssl_certificate_key  \\etc\\nginx\\key\\cert.key;
+    underscores_in_headers on;
+  
+    location =  \\ {
+      return 404;
+    }
+  
+    location ~ ^\\v(1|2) {
+        proxy_pass http:\\\\172.16.0.113:5000;
+  
+        client_max_body_size 512m;
+        client_body_buffer_size 2m;
+  
+        proxy_connect_timeout 10;
+        proxy_send_timeout 600;
+        proxy_read_timeout 60;
+        send_timeout 600;
+        proxy_redirect http:\\\\ https:\\\\;
+        proxy_buffering off;
+  
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+  
+    }
+  
+  }
+  ```
+'''
+tags: []
+isStarred: false
+isTrashed: false

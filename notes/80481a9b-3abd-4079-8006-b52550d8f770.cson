@@ -1,0 +1,222 @@
+createdAt: "2018-05-24T00:36:39.883Z"
+updatedAt: "2018-09-22T03:24:26.795Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "istio"
+content: '''
+  # istio
+  
+  ## istio release
+  [GCS browser: istio-prerelease](https://gcsweb.istio.io/gcs/istio-prerelease/daily-build)
+  
+  获取各个镜像的下载地址：
+  [istio-prerelease docker images](https://gcsweb.istio.io/gcs/istio-prerelease/daily-build/release-0.8-20180523-09-15/docker/)
+  通过浏览器控制台：
+  ```
+  var as = document.getElementsByTagName("a");
+  var wgetscripts = "";
+  for(i=1;i<as.length; i++) {wgetscripts += "wget --tries=5 --timestamping --wait=5 " + as[i].href + "\\n";}
+  console.log(wgetscripts);
+  ```
+  复制输出内容：
+  ```
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/app.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/citadel-test.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/citadel.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/eurekamirror.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/flexvolumedriver.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/galley.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/grafana.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/mixer.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/mixer_debug.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/node-agent-test.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/node-agent.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/pilot.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/proxy.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/proxy_debug.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/proxy_init.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/proxyv2.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/servicegraph.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/servicegraph_debug.tar.gz
+  wget --tries=5 --timestamping --wait=5 https://storage.googleapis.com/istio-prerelease/daily-build/release-0.8-20180524-09-15/docker/sidecar_injector.tar.gz
+  ```
+  
+  ## httpbin 示例
+  ### 创建gateway
+  ```
+  cat <<EOF | istioctl create -n istio-test -f -
+  apiVersion: networking.istio.io/v1alpha3
+  kind: Gateway
+  metadata:
+    name: httpbin-gateway
+  spec:
+    selector:
+      istio: ingressgateway # use Istio default gateway implementation
+    servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+      - "httpbin.example.com"
+  EOF
+  ```
+  ### 创建VirtualService
+  ```
+  cat <<EOF | istioctl create -n istio-test -f -
+  apiVersion: networking.istio.io/v1alpha3
+  kind: VirtualService
+  metadata:
+    name: httpbin
+  spec:
+    hosts:
+    - "httpbin.example.com"
+    gateways:
+    - httpbin-gateway
+    http:
+    - match:
+      - uri:
+          prefix: /status
+      - uri:
+          prefix: /delay
+      route:
+      - destination:
+          port:
+            number: 8000
+          host: httpbin
+  EOF
+  
+  ```
+  
+  创建同端口的gateway  ingressgateway pod中会报错：
+  ```
+  
+  [2018-06-05 02:12:34.509][21][warning][upstream] external/envoy/source/common/config/grpc_mux_impl.cc:218] gRPC config for type.googleapis.com/envoy.api.v2.Listener update rejected: Error adding/updating listener 0.0.0.0_80: error adding listener '0.0.0.0:80': multiple filter chains with the same matching rules are defined
+  [2018-06-05 02:12:34.509][21][warning][config] bazel-out/k8-opt/bin/external/envoy/source/common/config/_virtual_includes/grpc_mux_subscription_lib/common/config/grpc_mux_subscription_impl.h:70] gRPC config for type.googleapis.com/envoy.api.v2.Listener rejected: Error adding/updating listener 0.0.0.0_80: error adding listener '0.0.0.0:80': multiple filter chains with the same matching rules are defined
+  [2018-06-05 02:12:36.579][21][warning][upstream] external/envoy/source/common/config/grpc_mux_impl.cc:218] gRPC config for type.googleapis.com/envoy.api.v2.Listener update rejected: Error adding/updating listener 0.0.0.0_80: error adding listener '0.0.0.0:80': multiple filter chains with the same matching rules are defined
+  [2018-06-05 02:12:36.579][21][warning][config] bazel-out/k8-opt/bin/external/envoy/source/common/config/_virtual_includes/grpc_mux_subscription_lib/common/config/grpc_mux_subscription_impl.h:70] gRPC config for type.googleapis.com/envoy.api.v2.Listener rejected: Error adding/updating listener 0.0.0.0_80: error adding listener '0.0.0.0:80': multiple filter chains with the same matching rules are defined
+  ```
+  > 结论：不能创建多个同端口的gateway
+  
+  ## Bookinfo 示例
+  ### 创建gateway
+  使用 `samples/bookinfo/routing/bookinfo-gateway.yaml` 
+  ```
+  apiVersion: networking.istio.io/v1alpha3
+  kind: Gateway
+  metadata:
+    name: bookinfo-gateway
+  spec:
+    selector:
+      istio: ingressgateway # use istio default controller
+    servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+      - "*"
+  ---
+  apiVersion: networking.istio.io/v1alpha3
+  kind: VirtualService
+  metadata:
+    name: bookinfo
+  spec:
+    hosts:
+    - "*"
+    gateways:
+    - bookinfo-gateway
+    http:
+    - match:
+      - uri:
+          exact: /productpage
+      - uri:
+          exact: /login
+      - uri:
+          exact: /logout
+      - uri:
+          prefix: /api/v1/products
+      route:
+      - destination:
+          host: productpage
+          port:
+            number: 9080
+  ```
+  tls的gateway证书位置是必须是固定的：
+  ```
+  [2018-06-11 07:32:34.789][21][warning][config] external/envoy/source/server/listener_manager_impl.cc:254] adding listener '0.0.0.0:80': filter chain match rules require TLS Inspector listener filter, but it isn't configured, trying to inject it (this might fail if Envoy is compiled without it)
+  [2018-06-11 07:32:34.868][21][info][upstream] external/envoy/source/server/lds_api.cc:62] lds: add/update listener '0.0.0.0_80'
+  [2018-06-11 07:32:34.879][21][warning][upstream] external/envoy/source/common/config/grpc_mux_impl.cc:218] gRPC config for type.googleapis.com/envoy.api.v2.Listener update rejected: Error adding/updating listener 0.0.0.0_443: unable to read file: /etc/ioc-certs/ioc.cert.pem
+  [2018-06-11 07:32:34.880][21][warning][config] bazel-out/k8-opt/bin/external/envoy/source/common/config/_virtual_includes/grpc_mux_subscription_lib/common/config/grpc_mux_subscription_impl.h:70] gRPC config for type.googleapis.com/envoy.api.v2.Listener rejected: Error adding/updating listener 0.0.0.0_443: unable to read file: /etc/ioc-certs/ioc.cert.pem
+  [2018-06-11 07:32:36.595][21][warning][upstream] external/envoy/source/common/config/grpc_mux_impl.cc:218] gRPC config for type.googleapis.com/envoy.api.v2.Listener update rejected: Error adding/updating listener 0.0.0.0_443: unable to read file: /etc/ioc-certs/ioc.cert.pem
+  [2018-06-11 07:32:36.595][21][warning][config] bazel-out/k8-opt/bin/external/envoy/source/common/config/_virtual_includes/grpc_mux_subscription_lib/common/config/grpc_mux_subscription_impl.h:70] gRPC config for type.googleapis.com/envoy.api.v2.Listener rejected: Error adding/updating listener 0.0.0.0_443: unable to read file: /etc/ioc-certs/ioc.cert.pem
+  ```
+  创建secret：
+  ```
+  kubectl create -n istio-system secret tls istio-ingressgateway-certs --key /etc/istio/ingressgateway-certs/tls.key --cert /etc/istio/ingressgateway-certs/tls.crt
+  ```
+  > 目前tls 不支持sni  https://github.com/istio/istio/issues/2775  https://github.com/istio/istio/issues/1424
+  
+  gateway创建后ingressgateway容器中443 会打开：
+  ```
+  root@istio-ingressgateway-5c67fd94b4-2k5xb:/# netstat -anlp
+  Active Internet connections (servers and established)
+  Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+  tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      88/envoy        
+  tcp        0      0 127.0.0.1:15000         0.0.0.0:*               LISTEN      88/envoy        
+  tcp        0      0 0.0.0.0:443             0.0.0.0:*               LISTEN      88/envoy        
+  tcp        0      0 10.233.76.200:42760     10.233.50.41:15010      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:45582     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:45881     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:54999     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:49005     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:33812     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:58641     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:59412     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:59519     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  udp        0      0 10.233.76.200:45020     10.233.20.175:9125      ESTABLISHED 88/envoy        
+  Active UNIX domain sockets (servers and established)
+  Proto RefCnt Flags       Type       State         I-Node   PID/Program name    Path
+  unix  2      [ ]         DGRAM                    145657888 88/envoy            @envoy_domain_socket_0
+  ```
+  
+  ### 创建egressrule，用于访问集群外url
+  
+  ```
+  cat <<EOF | istioctl create -n ioc-test -f -
+  apiVersion: config.istio.io/v1alpha2
+  kind: EgressRule
+  metadata:
+    name: k8s-20-egress-rule
+  spec:
+    destination:
+      service: 10.110.20.11
+    ports:
+      - port: 5000
+        protocol: http
+      - port: 6443
+        protocol: https
+  EOF
+  ```
+  istio 的proxy会默认会阻止集群内部访问集群外部的，需要通过[设置`global.proxy.includeIPRanges`](https://istio.io/docs/tasks/traffic-management/egress/)来解决
+  
+  对于外部的https连接，因为没有配置证书，连接会被代理为http，使用https访问会报错：
+  ```
+  istio egress server gave http response to https
+  ```
+  
+  ## gateway 应该部署在哪个ns下
+  [having multiple Gateways in a mesh](https://groups.google.com/forum/#!topic/istio-users/vNrF6gqlnPM)
+  
+  
+  
+  # 关于 1.0.0 snapshot.0 版本
+  kubectl create -n istio-system secret tls istio-ingressgateway-certs --key 3_application/private/httpbin.example.com.key.pem --cert 3_application/certs/httpbin.example.com.cert.pem
+  
+  
+  
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false

@@ -1,0 +1,58 @@
+createdAt: "2018-04-28T07:39:31.782Z"
+updatedAt: "2018-04-30T02:51:33.684Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "Angular cli 升级"
+content: '''
+  # Angular cli 升级
+  
+  ## 操作步骤
+  - 卸载当前版本的angular-cli
+  - 卸载angular-sass(如果有的化)
+  - 安装anguar-cli, node-sass使用淘宝镜像，比较快。
+  ## 卸载之前的版本
+  如果之前未安装就不用了 
+  ```
+  npm uninstall angular-cli 
+  npm uninstall angular-sass 
+  ```
+  清理Cache
+  ```
+  npm cache clean
+  ```
+  
+  | 相关知识点 
+  缓存命令 
+  npm cache 提供了三个命令，分别是npm cache add, npm cache clean, npm cache verify。 
+  npm cache add 
+  官方解释说这个命令主要是 npm 内部使用，但是也可以用来手动给一个指定的 package 添加缓存。(This command is primarily intended to be used internally by npm, but it can provide a way to add data to the local installation cache explicitly.) 
+  npm cache clean 
+  删除缓存目录下的所有数据。从 npm@5 开始，为了保证缓存数据的有效性和完整性，需要加上 –force 参数。 
+  npm cache verify 
+  验证缓存数据的有效性和完整性，清理垃圾数据。
+  
+  下载新版本(beta.28)
+  mkdir angular-cli.beta.28
+  cd angular-cli.beta.28
+  git clone https://github.com/angular/angular-cli.git
+  cd angular-cli
+  
+  切换到beta.28
+  
+  git checkout v1.0.0-beta.28
+  sass_binary_site=https://npm.taobao.org/mirrors/node-sass npm link
+  cd ..
+  git clone http://xxxxxx/xxx/自己的项目.git
+  cd caibian-ng/caibian-static
+  git checkout develop
+  npm install
+  npm link angular-cli
+  
+  ----
+  npm install -g @angular/cli
+  npm install @angular/cli
+  npm install
+'''
+tags: []
+isStarred: false
+isTrashed: false

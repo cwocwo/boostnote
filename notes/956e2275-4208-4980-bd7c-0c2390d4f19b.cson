@@ -1,0 +1,86 @@
+createdAt: "2018-07-10T01:40:37.448Z"
+updatedAt: "2018-09-22T03:34:45.784Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "openssl 生成 p10请求"
+content: '''
+  # openssl 生成 p10请求
+  
+  ## 生成私钥
+  openssl genrsa -des3 -out private_key.pem 1024\\2048
+  
+  ## 生成p10
+  openssl req -new -out cert.csr -key private_key.pem
+  openssl req -new -nodes -key prvtkey.pem -out cert.csr
+  
+  ## 签发证书
+  openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout app-cert\\tls.key -out app-cert\\tls.crt -subj “\\CN=app.ioc.com”
+  openssl x509 -req -in cert.csr -out rsa_public_key.der -outform der -signkey rsa_private_key.pem -days 3650
+  
+  openssl x509 -req -in cert.csr -out rsa_public_key.pem -signkey private_key.pem -days 3650
+  
+  openssl req -config openssl.conf -new -x509 -newkey rsa:2048 -nodes -keyout ioc.key.pem -days 3650 -out ioc.cert.pem
+  
+  ### 通过配置生成证书示例
+  openssl req -config openssl.conf -new -x509 -newkey rsa:2048 -nodes -keyout ioc.key.pem -days 3650 -out ioc.cert.pem
+  
+  
+  
+  
+  ##  生成devops.domain.com的p10
+  ### 配置文件
+  openssl-req.conf
+  ```
+  [req]
+  req_extensions = v3_req
+  distinguished_name  = subject
+  
+  [ subject ]
+  countryName         = CN
+  countryName_default     = CN
+  
+  stateOrProvinceName     = stateA
+  stateOrProvinceName_default = stateA
+  
+  localityName            = CityB
+  localityName_default        = CityB
+  
+  organizationName         = domain
+  organizationName_default    = domain
+  
+  commonName          = OrgC
+  commonName_default      = OrgC
+  
+  emailAddress            = email@domain.com
+  emailAddress_default        = email@domain.com
+  
+  [ v3_req ]
+  subjectAltName = @alt_names
+  [alt_names]
+  DNS.1       = 10.110.25.57.xip.io
+  DNS.2       = *.10.110.25.57.xip.io
+  DNS.3       = devops.domain.com
+  DNS.4       = *.devops.domain.com
+  DNS.5       = *.ioc-test.10.110.25.57.xip.io
+  ```
+  ### 生成命令
+  -nodes 私钥不加密
+  ```
+  openssl req -newkey rsa:2048 -nodes -keyout devops.domain.com.key.pem -keyform PEM -out devops.domain.com.req.pem -outform PEM -config openssl-req.conf -days 3650
+  ```
+  
+  ### 查看请求
+  openssl req -in devops.domain.com.req.pem -text -noout
+  
+  ----
+  参考
+  [使用OpenSSL生成证书 - 孤剑 - 博客园](https:\\\\www.cnblogs.com\\AloneSword\\p\\3809002.html)
+  
+  [openssl: generate certificate request with non-DNS subject alternative names - Server Fault](https:\\\\serverfault.com\\questions\\596909\\openssl-generate-certificate-request-with-non-dns-subject-alternative-names)
+  [openssl req -- PKCS#10 certificate and certificate generating utility.](https:\\\\www.mkssoftware.com\\docs\\man1\\openssl_req.1.asp)
+  
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false

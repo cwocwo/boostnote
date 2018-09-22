@@ -1,0 +1,63 @@
+createdAt: "2018-09-22T02:57:51.924Z"
+updatedAt: "2018-09-22T03:34:53.337Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "Gitlab 如何嵌入到Iframe中"
+content: '''
+  # Gitlab 如何嵌入到Iframe中
+  
+  ## 直接使用Gitlab
+  修改`app\\controllers\\application_controller.rb`
+  ```
+    def default_headers
+      headers['X-Frame-Options'] = 'DENY'
+      headers['X-XSS-Protection'] = '1; mode=block'
+      headers['X-UA-Compatible'] = 'IE=edge'
+      headers['X-Content-Type-Options'] = 'nosniff'
+    end
+  ```
+  
+  将`X-Frame-Options`修改为`sameorigin`或者指定地址` allow-from https:\\\\example.com\\`
+  
+  
+  >X-Frame-Options 说明：
+  X-Frame-Options: deny
+  X-Frame-Options: sameorigin
+  X-Frame-Options: allow-from https:\\\\example.com\\
+  
+  ## 使用nginx代理
+  设置 `proxy_set_header   X-Frame-Options   SAMEORIGIN;`
+  ```
+  location @gitlab {
+      ## If you use HTTPS make sure you disable gzip compression
+      ## to be safe against BREACH attack.
+  
+  
+      ## https:\\\\github.com\\gitlabhq\\gitlabhq\\issues\\694
+      ## Some requests take more than 30 seconds.
+      proxy_read_timeout      300;
+      proxy_connect_timeout   300;
+      proxy_redirect          off;
+  
+      proxy_set_header   X-Forwarded-Proto $scheme;
+      proxy_set_header   Host              $http_host;
+      proxy_set_header   X-Real-IP         $remote_addr;
+      proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+      proxy_set_header   X-Frame-Options   SAMEORIGIN;
+      #proxy_hide_header X-Frame-Options;
+  
+      proxy_pass http:\\\\gitlab;
+    }
+  ```
+  
+  
+  参考
+  ----
+  [X-Frame-Options - HTTP | MDN](https:\\\\developer.mozilla.org\\en-US\\docs\\Web\\HTTP\\Headers\\X-Frame-Options)
+  [Allow gitlab inside iframe (#2347) · Issues · GitLab.org](https:\\\\gitlab.com\\gitlab-org\\gitlab-ce\\issues\\2347)
+  [app\\controllers\\application_controller.rb · master · GitLab.org](https:\\\\gitlab.com\\gitlab-org\\gitlab-ce\\blob\\master\\app\\controllers\\application_controller.rb#L182)
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false

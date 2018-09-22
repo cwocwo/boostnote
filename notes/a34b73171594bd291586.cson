@@ -1,5 +1,5 @@
 createdAt: "2018-01-27T05:46:04.761Z"
-updatedAt: "2018-02-12T10:17:14.582Z"
+updatedAt: "2018-09-22T03:26:41.430Z"
 type: "MARKDOWN_NOTE"
 folder: "66dff0cfbfde06f3d2e8"
 title: "使用halyard docker镜像安装spinnaker"
@@ -25,6 +25,12 @@ content: '''
   ```
   DEFAULT_JVM_OPTS='"-Dhttp.nonProxyHosts=localhost,127.0.0.1,10.110.22.96,8.8.8.8" "-Dhttp.proxyHost=10.110.22.96" "-Dhttp.proxyPort=8118" "-Dhttps.proxyHost=10.110.22.96" "-Dhttps.proxyPort=8118" "-Djava.security.egd=file:/dev/./urandom" "-Dspring.config.location=/opt/spinnaker/config/"'
   ```
+  
+  ```
+  DEFAULT_JVM_OPTS='"-Dhttp.nonProxyHosts=localhost,127.0.0.1,10.110.22.96,registry.cluster96.com,registry.ioc.com,registry.cluster48.com,8.8.8.8" "-Dhttp.proxyHost=localhost" "-Dhttp.proxyPort=8123" "-Dhttps.proxyHost=localhost" "-Dhttps.proxyPort=8123"  "-Djava.security.egd=file:/dev/./urandom" "-Dspring.config.location=/opt/spinnaker/config/"'
+  ```
+  
+  
   拷贝回容器：
   `docker cp halyard 90b8b50e84aa:/opt/halyard/bin/`
   
@@ -52,7 +58,7 @@ content: '''
       --password
   ``` 
   ```  
-  echo Harbor12345 | hal config provider docker-registry account add harbor96-iop \\
+  echo Harbor12345 | hal config provider docker-registry account add harbor96-ioc \\
       --address registry.cluster96.com:5000 \\
       --repositories library/appscode/test-server \\
       --username admin \\
@@ -84,12 +90,17 @@ content: '''
   ```
   export https_proxy=http://10.110.22.96:8118  
   export http_proxy=http://10.110.22.96:8118
-  export no_proxy==localhost,127.0.0.0/8,registry.cluster96.com,10.110.22.0/24,slave1,slave1.cluster96,registry.iop.com,10.110.17.0/24,master1,master1.cluster96,master3,master3.cluster96,master2,master2.cluster96
+  export no_proxy==localhost,127.0.0.0/8,registry.cluster96.com,10.110.22.0/24,slave1,slave1.cluster96,registry.ioc.com,10.110.17.0/24,master1,master1.cluster96,master3,master3.cluster96,master2,master2.cluster96
   ```
   设置kubernetes account
   ```
   hal config provider kubernetes enable
   hal config provider kubernetes account add spinnaker-service-account --docker-registries my-docker-registry --kubeconfig-file /root/.kube/config --context admin-cluster96 --namespaces spinnaker
+  ```
+  
+  更新 kubernetes account
+  ```
+  hal config provider kubernetes account edit spinnaker-service-account --add-docker-registry harbor48-ioc
   ```
   
   ### 设置storage
@@ -183,10 +194,10 @@ content: '''
        .hal/default/service-settings/deck.yml
   
   hal config security ui edit \\
-      --override-base-url http://spinnaker.iop.com:9000
+      --override-base-url http://spinnaker.ioc.com:9000
   
   hal config security api edit \\
-      --override-base-url http://spinnaker.iop.com:8084
+      --override-base-url http://spinnaker.ioc.com:8084
   ```
   
   
@@ -398,7 +409,7 @@ content: '''
   
   hal config security authn oauth2 enable
   
-  hal config security authn oauth2 edit --pre-established-redirect-uri https://spinnaker.iop.com:8084/login
+  hal config security authn oauth2 edit --pre-established-redirect-uri https://spinnaker.ioc.com:8084/login
   ### 创建Servergroup
   servergroup中要使用docker镜像，因本文配置的index.docker.io的镜像仓库，因此需要为k8s的每个节点设置docker代理：
   
@@ -409,7 +420,7 @@ content: '''
   [Service]
   Environment="HTTP_PROXY=http://10.110.22.96:8118/"
   Environment="HTTPS_PROXY=http://10.110.22.96:8118/"
-  Environment="NO_PROXY=localhost,127.0.0.0/8,registry.cluster96.com,10.110.22.0/24,slave1,slave1.cluster96,registry.iop.com,10.110.17.0/24,master1,master1.cluster96,master3,master3.cluster96,master2,master2.cluster96"
+  Environment="NO_PROXY=localhost,127.0.0.0/8,registry.cluster96.com,10.110.22.0/24,slave1,slave1.cluster96,registry.ioc.com,10.110.17.0/24,master1,master1.cluster96,master3,master3.cluster96,master2,master2.cluster96"
   ```
   
   使配置生效:

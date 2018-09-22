@@ -1,0 +1,64 @@
+createdAt: "2018-08-10T07:19:50.379Z"
+updatedAt: "2018-08-14T11:00:50.990Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "查链接不定时中断问题"
+content: '''
+  
+  # 查链接不定时中断问题
+  
+  ## 查看calico网络
+  ### calicoctl 版本
+  ```
+  [root@icp-71 calico]# calicoctl --version
+  calicoctl version v2.0.2, build 6acca0a3
+  ```
+  
+  ### calicoctl 配置
+  /etc/calico/apiconfigv3.cfg
+  ```
+  apiVersion: projectcalico.org/v3
+  kind: CalicoAPIConfig
+  metadata:
+  spec:
+    datastoreType: "etcdv3"
+    etcdEndpoints: "https://10.110.25.71:4001,https://10.110.25.72:4001,https://10.110.25.73:4001"
+    etcdKeyFile: /etc/cfc/conf/etcd/client-key.pem
+    etcdCertFile: /etc/cfc/conf/etcd/client.pem
+    etcdCACertFile: /etc/cfc/conf/etcd/ca.pem
+  ```
+  > 参考[Configuring calicoctl to connect to an etcd datastore](https://docs.projectcalico.org/v3.1/usage/calicoctl/configure/etcd)
+  ### 执行calicoctl命令
+  #### 获取workloadendpoint
+  ```
+  [root@icp-71 calico]# calicoctl get --config /etc/calico/apiconfigv3.cfg --namespace=istio-system workloadendpoint
+  NAMESPACE      WORKLOAD                                    NODE     NETWORKS          INTERFACE         
+  istio-system   prometheus-77dcd77cc8-cxdtl                 icp-56   10.1.204.44/32    cali7dc04a8fcd2   
+  istio-system   istio-pilot-5f4445d8cb-wmwzd                icp-57   10.1.237.140/32   cali4e4aaeee25a   
+  istio-system   istio-ingressgateway-76bfd6cd6-kvswd        icp-58   10.1.7.181/32     cali43c89ca4b30   
+  istio-system   istio-statsd-prom-bridge-5c476565fd-d9fjr   icp-59   10.1.98.220/32    calic7828a3bc6d   
+  istio-system   helloworld-v2-98f75cf5b-fjknj               icp-60   10.1.252.230/32   calibd47cfb7b82   
+  istio-system   istio-egressgateway-98658d78b-4v8qw         icp-60   10.1.252.254/32   cali043b7cdc03f   
+  istio-system   istio-mixer-7996575765-45lpt                icp-60   10.1.252.213/32   calieb55283f4ea   
+  istio-system   istio-pilot-85c4cc8bb6-5xdxv                icp-60   10.1.252.216/32   calie521afebf3e   
+  istio-system   istio-policy-8f9d7c957-86xj5                icp-60   10.1.252.211/32   calic8de9fe9b36   
+  istio-system   istio-sidecar-injector-7947777478-ndnv5     icp-60   10.1.252.228/32   cali990cb2347e7   
+  istio-system   istio-telemetry-5f6dd96f97-b99ss            icp-60   10.1.252.208/32   cali5c586b7dce5   
+  istio-system   istio-tracing-8d897d86-tmhd5                icp-60   10.1.252.236/32   cali4fd1892ca1c   
+  istio-system   servicegraph-6d445454bf-9f228               icp-60   10.1.253.151/32   cali40e4477f36a   
+  istio-system   grafana-6cb5d74ff-v9wkk                     icp-61   10.1.155.199/32   cali85c9cedb74e   
+  istio-system   istio-citadel-75bc884f4-5lf9t               icp-61   10.1.155.254/32   cali068350f95d2   
+  istio-system   istio-sidecar-injector-68479fb9f9-xz4cx     icp-61   10.1.155.211/32   cali5817c6f86c8
+  ```
+  #### 获取单个workloadendpoint
+  
+  
+  
+  #### tcpdump 抓包
+  tcpdump -nn -i   cali43c89ca4b30 -e
+  
+  etcdctl --ca-file=/etc/ssl/etcd/ssl/ca.pem --cert-file=/etc/ssl/etcd/ssl/member-master1.pem --key-file=/etc/ssl/etcd/ssl/member-master1-key.pem --endpoints=https://10.110.25.71:2379,https://10.110.25.72:2379 ls -r
+'''
+tags: []
+isStarred: false
+isTrashed: false

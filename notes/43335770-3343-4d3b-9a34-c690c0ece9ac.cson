@@ -1,0 +1,21 @@
+createdAt: "2018-09-13T09:56:05.111Z"
+updatedAt: "2018-09-22T03:34:55.053Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "腾讯云api调用"
+content: '''
+  # 腾讯云api调用
+  
+  ## 创建SecretId SecretKey
+  在管理工具-访问管理-用户管理中创建子用户，并新建一个Api密钥
+  
+  ## 获取签名
+  参考：[GitHub - TencentCloud\\tencentcloud-sdk-python: Tencent Cloud API 3.0 SDK for Python](https:\\\\github.com\\TencentCloud\\tencentcloud-sdk-python)
+  
+  
+  
+  [腾讯云api explorer](https:\\\\console.cloud.tencent.com\\api\\explorer)
+'''
+tags: []
+isStarred: false
+isTrashed: false

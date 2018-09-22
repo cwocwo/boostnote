@@ -1,0 +1,117 @@
+createdAt: "2018-07-11T02:06:16.540Z"
+updatedAt: "2018-09-22T03:34:48.889Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "icp"
+content: '''
+  # icp  
+  
+  ```
+  apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: 2018-06-21T07:29:21Z
+    labels:
+      app: monitoring-prometheus
+      component: prometheus
+    name: monitoring-prometheus
+    namespace: kube-system
+    resourceVersion: "54486646"
+    selfLink: \\api\\v1\\namespaces\\kube-system\\services\\monitoring-prometheus
+    uid: d07b8744-7524-11e8-a703-6c92bf7360cc
+  spec:
+    clusterIP: 10.0.0.238
+    ports:
+    - name: http-prometheus
+      port: 9091
+      protocol: TCP
+      targetPort: 9090
+    - name: https-prometheus-tls
+      port: 9090
+      protocol: TCP
+      targetPort: 8443
+    selector:
+      app: monitoring-prometheus
+      component: prometheus
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+  ```
+  
+  
+  ```
+  - match:
+      - uri:
+          prefix: \\monitoring
+      rewrite:
+        uri: \\graph
+      route:
+      - destination:
+          host: prometheus.monitoring.svc.cluster.local
+    - match:
+      - uri:
+          prefix: \\static\\
+      route:
+      - destination:
+          host: prometheus.monitoring.svc.cluster.local
+  ```
+  
+  
+  # jenkins健康检查
+  ```
+          ports:
+          - containerPort: 8080
+            name: http
+            protocol: TCP
+          - containerPort: 50000
+            name: slavelistener
+            protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: \\login
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 10
+  ```
+  ```
+        containers:
+        - args:
+          - --argumentsRealm.passwd.$(ADMIN_USER)=$(ADMIN_PASSWORD)
+          - --argumentsRealm.roles.$(ADMIN_USER)=admin
+          env:
+          - name: JAVA_OPTS
+            value: -Xms512m -Xmx1024m
+          - name: JENKINS_OPTS
+          - name: ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: jenkins-admin-password
+                name: jenkins
+          - name: ADMIN_USER
+            valueFrom:
+              secretKeyRef:
+                key: jenkins-admin-user
+                name: jenkins
+          image: registry.icp.com:5000\\ioc\\jenkins:lts
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 12
+            httpGet:
+              path: \\login
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            successThreshold: 1
+            timeoutSeconds: 10
+  ```
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false

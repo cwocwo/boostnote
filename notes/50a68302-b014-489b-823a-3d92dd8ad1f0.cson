@@ -1,0 +1,171 @@
+createdAt: "2018-08-07T12:16:12.646Z"
+updatedAt: "2018-09-22T03:16:10.300Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "Jenkins 自动配置"
+content: '''
+  # Jenkins 自动配置
+  ## 预置管理员用户信息
+  ```.jenkins\\users\\admin\\config.xml```
+  
+  ```
+  <?xml version='1.1' encoding='UTF-8'?>
+  <user>
+    <fullName>will cai</fullName>
+    <properties>
+      <jenkins.security.ApiTokenProperty>
+        <apiToken>{token ... }</apiToken>
+      </jenkins.security.ApiTokenProperty>
+      <hudson.plugins.emailext.watching.EmailExtWatchAction_-UserProperty plugin="email-ext@2.63">
+        <triggers/>
+      </hudson.plugins.emailext.watching.EmailExtWatchAction_-UserProperty>
+      <org.jenkinsci.plugins.displayurlapi.user.PreferredProviderUserProperty plugin="display-url-api@2.2.0">
+        <providerId>default</providerId>
+      </org.jenkinsci.plugins.displayurlapi.user.PreferredProviderUserProperty>
+      <hudson.model.PaneStatusProperties>
+        <collapsed/>
+      </hudson.model.PaneStatusProperties>
+      <com.cloudbees.plugins.credentials.UserCredentialsProvider_-UserCredentialsProperty plugin="credentials@2.1.18">
+        <domainCredentialsMap class="hudson.util.CopyOnWriteMap$Hash"/>
+      </com.cloudbees.plugins.credentials.UserCredentialsProvider_-UserCredentialsProperty>
+      <hudson.model.MyViewsProperty>
+        <views>
+          <hudson.model.AllView>
+            <owner class="hudson.model.MyViewsProperty" reference="../../.."/>
+            <name>all</name>
+            <filterExecutors>false</filterExecutors>
+            <filterQueue>false</filterQueue>
+            <properties class="hudson.model.View$PropertyList"/>
+          </hudson.model.AllView>
+        </views>
+      </hudson.model.MyViewsProperty>
+      <hudson.search.UserSearchProperty>
+        <insensitiveSearch>true</insensitiveSearch>
+      </hudson.search.UserSearchProperty>
+      <hudson.security.HudsonPrivateSecurityRealm_-Details>
+        <passwordHash>#jbcrypt:$2a$10$uQEyKIlF3.5FkLBy0vpDreSqwjawGIDeFR4evWOaNR4Ab/V2s1NgG</passwordHash>
+      </hudson.security.HudsonPrivateSecurityRealm_-Details>
+      <hudson.tasks.Mailer_-UserProperty plugin="mailer@1.21">
+        <emailAddress>example@domain.com</emailAddress>
+      </hudson.tasks.Mailer_-UserProperty>
+      <jenkins.security.LastGrantedAuthoritiesProperty>
+        <roles>
+          <string>authenticated</string>
+        </roles>
+        <timestamp>1533524221164</timestamp>
+      </jenkins.security.LastGrantedAuthoritiesProperty>
+    </properties>
+  </user>;
+  ```
+  ## 配置 Jenkins Location Url
+  修改文件：
+  `jenkins.model.JenkinsLocationConfiguration.xml`
+  ```
+  <?xml version='1.1' encoding='UTF-8'?>
+  <jenkins.model.JenkinsLocationConfiguration>
+    <adminAddress>没有配置邮箱地址 &lt;nobody@nowhere&gt;</adminAddress>
+    <jenkinsUrl>http://10.200.84.61:8080/jenkins/</jenkinsUrl>
+  </jenkins.model.JenkinsLocationConfiguration>
+  ```
+  
+  ## 配置kubernetes信息
+  
+  ### 过程中需要创建连接k8s的认证信息
+  `credentials.xml`
+  ```
+  <?xml version='1.1' encoding='UTF-8'?>
+  <com.cloudbees.plugins.credentials.SystemCredentialsProvider plugin="credentials@2.1.18">
+    <domainCredentialsMap class="hudson.util.CopyOnWriteMap$Hash">
+      <entry>
+        <com.cloudbees.plugins.credentials.domains.Domain>
+          <specifications/>
+        </com.cloudbees.plugins.credentials.domains.Domain>
+        <java.util.concurrent.CopyOnWriteArrayList>
+          <com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl>
+            <scope>GLOBAL</scope>
+            <id>7b21bb15-1cfc-42d9-a129-52ecb32c11ba</id>
+            <description></description>
+            <username>admin</username>
+            <password>{AQAAABAAAAAQG5fahWM/AmXeOlt2K2Pu8ykrPtjKOwksAITVBeEqRmI=}</password>
+          </com.cloudbees.plugins.credentials.impl.UsernamePasswordCredentialsImpl>
+        </java.util.concurrent.CopyOnWriteArrayList>
+      </entry>
+    </domainCredentialsMap>
+  </com.cloudbees.plugins.credentials.SystemCredentialsProvider>
+  ```
+  ### 增加k8s信息
+  jenkins home 下的config.xml 
+  
+  ```
+  <?xml version='1.1' encoding='UTF-8'?>
+  <hudson>
+    <disabledAdministrativeMonitors/>
+    <version>2.121.2</version>
+    <installStateName>RUNNING</installStateName>
+    <numExecutors>2</numExecutors>
+    <mode>NORMAL</mode>
+    <useSecurity>true</useSecurity>
+    <authorizationStrategy class="hudson.security.FullControlOnceLoggedInAuthorizationStrategy">
+      <denyAnonymousReadAccess>true</denyAnonymousReadAccess>
+    </authorizationStrategy>
+    <securityRealm class="hudson.security.HudsonPrivateSecurityRealm">
+      <disableSignup>true</disableSignup>
+      <enableCaptcha>false</enableCaptcha>
+    </securityRealm>
+    <disableRememberMe>false</disableRememberMe>
+    <projectNamingStrategy class="jenkins.model.ProjectNamingStrategy$DefaultProjectNamingStrategy"/>
+    <workspaceDir>${JENKINS_HOME}/workspace/${ITEM_FULL_NAME}</workspaceDir>
+    <buildsDir>${ITEM_ROOTDIR}/builds</buildsDir>
+    <jdks/>
+    <viewsTabBar class="hudson.views.DefaultViewsTabBar"/>
+    <myViewsTabBar class="hudson.views.DefaultMyViewsTabBar"/>
+    <clouds>
+      <org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud plugin="kubernetes@1.12.1">
+        <name>kubernetes</name>
+        <defaultsProviderTemplate></defaultsProviderTemplate>
+        <templates/>
+        <serverUrl>http://10.110.22.77:8080</serverUrl>
+        <skipTlsVerify>false</skipTlsVerify>
+        <addMasterProxyEnvVars>false</addMasterProxyEnvVars>
+        <capOnlyOnAlivePods>false</capOnlyOnAlivePods>
+        <namespace>jenkins</namespace>
+        <jenkinsUrl>http://10.200.84.61:8080/jenkins/</jenkinsUrl>
+        <credentialsId>7b21bb15-1cfc-42d9-a129-52ecb32c11ba</credentialsId>
+        <containerCap>10</containerCap>
+        <retentionTimeout>5</retentionTimeout>
+        <connectTimeout>0</connectTimeout>
+        <readTimeout>0</readTimeout>
+        <usageRestricted>false</usageRestricted>
+        <maxRequestsPerHost>32</maxRequestsPerHost>
+        <podRetention class="org.csanchez.jenkins.plugins.kubernetes.pod.retention.Never"/>
+      </org.csanchez.jenkins.plugins.kubernetes.KubernetesCloud>
+    </clouds>
+    <quietPeriod>5</quietPeriod>
+    <scmCheckoutRetryCount>0</scmCheckoutRetryCount>
+    <views>
+      <hudson.model.AllView>
+        <owner class="hudson" reference="../../.."/>
+        <name>all</name>
+        <filterExecutors>false</filterExecutors>
+        <filterQueue>false</filterQueue>
+        <properties class="hudson.model.View$PropertyList"/>
+      </hudson.model.AllView>
+    </views>
+    <primaryView>all</primaryView>
+    <slaveAgentPort>-1</slaveAgentPort>
+    <disabledAgentProtocols>
+      <string>JNLP-connect</string>
+      <string>JNLP2-connect</string>
+    </disabledAgentProtocols>
+    <label></label>
+    <crumbIssuer class="hudson.security.csrf.DefaultCrumbIssuer">
+      <excludeClientIPFromCrumb>false</excludeClientIPFromCrumb>
+    </crumbIssuer>
+    <nodeProperties/>
+    <globalNodeProperties/>
+  </hudson>
+  ```
+'''
+tags: []
+isStarred: false
+isTrashed: false

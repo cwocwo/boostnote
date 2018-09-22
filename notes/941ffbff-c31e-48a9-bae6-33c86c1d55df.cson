@@ -1,0 +1,21 @@
+createdAt: "2018-05-02T02:34:31.005Z"
+updatedAt: "2018-09-22T03:20:31.265Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "npm 常用操作"
+content: '''
+  # npm 常用操作
+  
+  ## 设置registry
+  ```
+  npm config set registry http://repo.domain.com:8081/artifactory/api/npm/ioc-npm-virtual/
+  
+  npm login
+  username
+  password
+  email
+  ```
+'''
+tags: []
+isStarred: false
+isTrashed: false

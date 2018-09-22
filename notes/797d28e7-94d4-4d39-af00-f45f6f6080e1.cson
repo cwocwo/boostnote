@@ -1,0 +1,176 @@
+createdAt: "2018-04-27T11:04:10.707Z"
+updatedAt: "2018-09-22T03:28:04.528Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "kubectl 常用操作"
+content: '''
+  # kubectl 常用操作
+  kubectl logs jenkins-9f8c8ddf9-96hww -n jenkins -c copy-default-config -f
+  
+  helm install  jenkins/ --name jenkins --tls --namespace jenkins
+  
+  helm del --purge jenkins --tls
+  
+  kubectl exec -it jenkins-5cdf68f4fd-nv524 -n jenkins --  /bin/bash
+  
+  ## 强制删除pod
+  kubectl delete pod devops-app-web-test-deploy-rswfd-6bd49cf8b8-n8svf -n ioc-test --grace-period=0 --force
+  
+  kubectl get pods --namespace foo -l status=pending
+  
+  kubectl get pod -o jsonpath='{range .items[*]}{.metadata.name} {" "}{end}' -n ioc
+  kubectl get pod -o jsonpath='kubectl delete pod {range .items[*]}{.metadata.name} {" "}{end}' -l app=app-web
+  jenkins=slave
+  
+  ## ingress 重定向
+   annotations:
+        ingress.kubernetes.io/rewrite-target: /
+  
+  ## 生成tls证书：
+  
+  mkdir app-cert
+  openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout app-cert/tls.key -out app-cert/tls.crt -subj "/CN=app.ioc.com"
+  
+  ### 生成多DNS证书
+  创建文件 openssl.conf
+  ```
+  [ req ]
+  default_bits        = 2048
+  default_keyfile     = server-key.pem
+  distinguished_name  = subject
+  req_extensions      = extensions
+  x509_extensions     = extensions
+  string_mask         = utf8only
+  
+  [ subject ]
+  countryName         = CN
+  countryName_default     = CN
+  
+  stateOrProvinceName     = Shandong
+  stateOrProvinceName_default = SD
+  
+  localityName            = Beijing
+  localityName_default        = Beijing
+  
+  organizationName         = orgx
+  organizationName_default    = orgx
+  
+  commonName          = ioc
+  commonName_default      = ioc
+  
+  emailAddress            = ioc@orgx.com
+  emailAddress_default        = ioc@orgx.com
+  
+  [ extensions ]
+  
+  subjectKeyIdentifier        = hash
+  authorityKeyIdentifier  = keyid,issuer
+  
+  basicConstraints        = CA:FALSE
+  keyUsage            = nonRepudiation, digitalSignature, keyEncipherment
+  extendedKeyUsage    = serverAuth
+  subjectAltName          = @alternate_names
+  nsComment           = "OpenSSL Generated Certificate"
+  
+  [ alternate_names ]
+  
+  DNS.1       = ioc.site
+  DNS.2       = www.ioc.site
+  ```
+  执行命令：
+  ```
+  openssl req -config openssl.conf -new -x509 -newkey rsa:2048 -nodes -keyout ioc.key.pem -days 3650 -out ioc.cert.pem
+  ```
+  
+  
+  ### 创建k8s tls secret
+  ```
+  kubectl create secret tls app-web-tls-cert --key  app-cert/tls.key --cert app-cert/tls.crt -n ioc
+  ```
+  
+  ## 使用externalIPs访问外部服务
+  service的targetPort对应Endpoints的port
+  ###  Endpoints
+  
+  ```
+  kind: Endpoints
+  apiVersion: v1
+  metadata:
+    name: keycloak-external
+  subsets:
+    - addresses:
+        - ip: 10.17.1.160
+      ports:
+        - port: 8888
+  ```
+  
+  ### Service
+  ```
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: keycloak-external
+  spec:
+    ports:
+      - port: 30888
+        targetPort: 8888
+    externalIPs:
+      - 10.17.1.160
+  ```
+  
+  ### docker操作
+  
+  docker save -o app-web.tar app-web:0.1
+  
+  docker load < app-web.tar
+  docker tag app-web:0.1 registry.iot.com:5000/ioc/app-web:0.1
+  docker push registry.iot.com:5000/ioc/app-web:0.1
+  
+  #### 镜像仓库配置
+  vi /usr/lib/systemd/system/docker.service.d/docker-options.conf
+  
+  vi /etc/systemd/system/docker.service.d/docker-options.conf
+  添加
+  --insecure-registry=registry.domain.com:5000 
+  --insecure-registry=registry.domain.cn
+  执行
+  
+  
+  systemctl daemon-reload
+  systemctl restart docker
+  echo '10.110.25.73 registry.icp.com' >> /etc/hosts
+  docker login registry.icp.com:5000 -u admin -p 123456a?
+  
+  #### docker 代理配置
+  给Centos7加上网络代理后发现Docker依然无法联网查找原因才知道Docker需要额外配置代理，步骤如下:
+  
+  1 创建目录 
+  mkdir /etc/systemd/system/docker.service.d
+  
+  2 创建配置文件 
+  touch /etc/systemd/system/docker.service.d/http-proxy.conf
+  
+  3 编辑文件并加入以下内容 
+  vim/vi http-proxy.conf 
+  [Service] 
+  Environment="HTTP_PROXY=http://ip:port"
+  
+  4 更新重加载配置&重启Docker服务 
+  systemctl daemon-reload 
+  systemctl restart docker
+  
+  
+  ## openssl查看证书信息
+  ```
+  openssl x509 -in cert.pem -noout -text
+  ```
+  
+  ## 查看kubelet日志
+  sudo journalctl _UID=1000 --since today
+  journalctl -e kubelet --since "1 min ago" 
+  
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false

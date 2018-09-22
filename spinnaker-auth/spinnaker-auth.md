@@ -9,13 +9,13 @@
 目前在开发中
 
 ## spinnaker 对helm的支持
-
+k8s v2 实现，未发布
 
 ## spinnaker 对istio的支持
-
+讨论中
 
 ## spinnaker的认证
-
+支持openid认证
 
 ## spinnaker的授权
 

@@ -4,10 +4,11 @@ title: ""
 description: ""
 snippets: [
   {
-    name: ""
+    name: "Using password prompts with gradle build files"
     mode: "text"
     content: '''
-      Using password prompts with gradle build files
+      #  Using password prompts with gradle build files
+       
        Jan 19, 2014  20 min read Show changes
       In my post Handling signing configs with gradle I introduced several options how to extract private signing information from your build file and store it outside of your repository.
       
@@ -130,4 +131,4 @@ tags: []
 isStarred: false
 isTrashed: false
 createdAt: "2018-01-13T01:18:07.350Z"
-updatedAt: "2018-01-13T01:18:14.367Z"
+updatedAt: "2018-07-12T03:29:34.262Z"

@@ -1,0 +1,140 @@
+createdAt: "2018-09-01T03:27:00.589Z"
+updatedAt: "2018-09-22T03:34:41.655Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "http2 kecloak proxy"
+content: '''
+  # http2 kecloak proxy
+  
+  .\\keycloak-proxy-linux-amd64 -config config.yaml --skip-openid-provider-tls-verify=true --secure-cookie=false --verbose=true
+  
+  
+  
+  
+  
+  [docker-openresty\\Dockerfile.fat at master · openresty\\docker-openresty · GitHub](https:\\\\github.com\\openresty\\docker-openresty\\blob\\master\\alpine\\Dockerfile.fat)
+  
+  
+  [GitHub - zmartzone\\lua-resty-openidc: Lua implementation to make NGINX operate as an OpenID Connect RP or OAuth 2.0 RS using the Lua extension scripting features (http:\\\\wiki.nginx.org\\HttpLuaModule) which are for instance part of OpenResty (http:\\\\openresty.org\\)](https:\\\\github.com\\zmartzone\\lua-resty-openidc)
+  
+  ## 构建镜像
+  [auth-proxy\\openidc-auth-proxy at master · jochenchrist\\auth-proxy · GitHub](https:\\\\github.com\\jochenchrist\\auth-proxy\\tree\\master\\openidc-auth-proxy)
+  ```
+  git clone https:\\\\github.com\\jochenchrist\\auth-proxy.git
+  cd auth-proxy\\openidc-auth-proxy
+  docker build -t openidc-auth-proxy:1.0.0 .
+  docker tag openidc-auth-proxy:1.0.0 docker pull cwocwo\\auth-proxy:1.0.1
+  ```
+  
+  ```
+  docker pull cwocwo\\auth-proxy:1.0.1
+  ```
+  
+  
+  
+  
+  
+  
+  nginx.conf
+  ```
+  events {
+    worker_connections 128;
+  }
+  
+  http {
+  
+    lua_package_path '~\\lua\\?.lua;;';
+  
+    # docker embedded DNS server
+    resolver 10.110.1.25 ipv6=off;
+  
+    lua_ssl_trusted_certificate \\etc\\ssl\\certs\\ca-certificates.crt;
+    lua_ssl_verify_depth 5;
+  
+    # cache for discovery metadata documents
+    lua_shared_dict discovery 1m;
+    # cache for JWKs
+    lua_shared_dict jwks 1m;
+  
+    server {
+      listen 4443 ssl http2;
+      ssl on;
+      ssl_certificate      \\etc\\nginx\\certs\\tiller.cert.pem;
+      ssl_certificate_key  \\etc\\nginx\\certs\\tiller.key.pem;
+      # Keycloak (Identity Provider)
+      location \\auth {
+          proxy_pass https:\\\\app-web.ioc-test.10.110.25.57.xip.io;
+          proxy_set_header Host $http_host;
+          proxy_pass_request_headers on;
+      }
+  
+      # app1 (Relying Party)
+      location \\ {
+          access_by_lua_block {
+              local opts = {
+                  redirect_uri_path = "\\app1\\redirect_uri",
+                  discovery = "https:\\\\app-web.ioc-test.10.110.25.57.xip.io\\auth\\realms\\app\\.well-known\\openid-configuration",
+                  client_id = "app",
+                  -- client_secret = "b162ec35-3e05-4129-8da1-63d5e721b7d6",
+                  scope = "openid email",
+                  access_token_expires_leeway = 30,
+                  -- This is really, really important
+                  accept_none_alg = false,
+                  accept_unsupported_alg = false,
+                  renew_access_token_on_expiry = true,
+                  session_contents = {access_token=true, id_token=true}
+              }
+  
+            -- call authenticate for OpenID Connect user authentication
+            local res, err = require("resty.openidc").authenticate(opts)
+  
+            if err then
+              ngx.status = 500
+              ngx.say(err)
+              ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+                        end
+  
+            -- Set valid access token and email as request header
+            ngx.req.set_header("Authorization", "Bearer " .. res.access_token)
+            ngx.req.set_header("X-User", res.id_token.email)
+        }
+        proxy_pass http:\\\\10.110.25.114:31313;
+      }
+    }
+  }
+  
+  
+  ```
+  
+  docker run -v \\opt\\keycloak-proxy\\conf:\\usr\\local\\openresty\\nginx\\conf -v \\opt\\keycloak-proxy\\certs:\\etc\\nginx\\certs -p 3000:4443 -d --name=auth-proxy cwocwo\\auth-proxy:1.0.1
+  
+  
+  
+  ## http2 ssl
+  server {
+          listen       443 ssl http2;
+          server_name  www.tinywan.com;
+          set $root_path \\home\\www;
+          root $root_path;
+  
+          ssl on;
+          ssl_certificate      \\etc\\letsencrypt\\live\\www.tinywan.com\\fullchain.pem;
+          ssl_certificate_key  \\etc\\letsencrypt\\live\\www.tinywan.com\\\\privkey.pem;
+          server_tokens off;
+  
+  
+          location \\ {
+              if (!-e $request_filename) {
+                  rewrite  ^(.*)$  \\index.php?s=\\$1  last;
+                  break;
+              }
+          }
+  }
+  
+  
+  [GitHub - grpc-ecosystem\\grpc-gateway: gRPC to JSON proxy generator following the gRPC HTTP spec](https:\\\\github.com\\grpc-ecosystem\\grpc-gateway)  --gRPC to JSON proxy generator following the gRPC HTTP spec
+  
+'''
+tags: []
+isStarred: false
+isTrashed: false

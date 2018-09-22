@@ -1,0 +1,187 @@
+createdAt: "2018-07-09T10:05:25.753Z"
+updatedAt: "2018-09-22T03:34:58.557Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "calico 操作"
+content: '''
+  # calico 操作 
+   824  kubectl get pod -n kube-system|grep calico
+    825  kubectl get pod -n kube-system -o wide|grep calico
+    826  kubectl log calico-node-amd64-wmwr7 -n kube-system
+    827  kubectl log calico-node-amd64-wmwr7 -n kube-system calico-node-amd64
+    828  kubectl delete pod calico-node-amd64-wmwr7 -n kube-system calico-node-amd64
+    829  kubectl delete pod calico-node-amd64-wmwr7 -n kube-system 
+    830  kubectl get pod -n kube-system -o wide|grep calico
+    831  calicoctl node status
+    832  kubectl delete pod calico-node-amd64-t7sbz -n kube-system 
+    833  kubectl get pod -n kube-system -o wide|grep calico
+    834  calicoctl node status
+    835  kubectl get pod -n kube-system -o wide|grep calico
+    836  calicoctl node status
+    837  kubectl get pod -n kube-system -o wide|grep calico
+    838  kubectl log calico-node-amd64-gkf7m -n kube-system
+    839  kubectl log calico-node-amd64-gkf7m -n kube-system calico-node-am4
+    840  kubectl log calico-node-amd64-gkf7m -n kube-system calico-node-amd64
+    841  calicoctl node status
+    842  ssh icp-59
+    843  route -n
+    844  ssh icp-59
+    845  calicoctl node status
+    846  kubectl get pod -n kube-system -o wide|grep calico
+    847  kubectl delete pod calico-node-amd64-2wn9l -n kube-system
+    848  kubectl get pod -n kube-system -o wide|grep calico
+    849  calicoctl node status
+    850  kubectl get pod -n kube-system -o wide|grep calico
+    851  ceph -s
+    852  ceph osd tree
+    853  ssh icp-61
+    854  ceph -s
+    855  ceph osd tree
+    856  ssh icp-61
+    857  ceph -s
+    858  calicoctl node status
+    859  ssh icp-56
+    860  calicoctl node status
+    861  ceph -s
+    862  ceph osd tree
+    863  ssh icp-61
+    864  ceph -s
+    865  route -n
+    866  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp9s0f0
+    867  nmcli con reload enp9s0f0
+    868  ip addr show enp9s0f0
+    869  nmcli con modify enp9s0f0 ipv4.addresses 10.10.25.71\\24
+    870  nmcli con reload enp9s0f0
+    871  ip addr show enp9s0f0
+    872  nmcli con show enp9s0f0
+    873  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp9s0f0
+    874  ip addr show eno1
+    875  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp9s0f0
+    876  calicoctl node status
+    877  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp9s0f0:q
+    878  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp9s0f0
+    879  systemctl restart network
+    880  ip addr show eno1
+    881  kubectl get pod -n kube-system -o wide|grep calico
+    882  kubectl get pod -n kube-system -o wide|grep ucarp
+    883  docker ps -a|grep ucarp
+    884  docker kill 6be1c305612e 94ae84b46a72
+    885  docker ps -a|grep ucarp
+    886  ping 10.110.25.74
+    887  ip addr show eno1
+    888  nmcli con show enp9s0f0
+    889  ip addr show enp9s0f0
+    890  ssh icp-72
+    891  route -n
+    892  ip addr show
+    893  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp130s0f0
+    894  systemctl restart network
+    895  ip addr
+    896  route -n
+    897  ip addr show eno1
+    898  ceph -s
+    899  vim \\etc\\ceph\\ceph.conf 
+    900  vim \\opt\\ibm-cloud-private-2.1.0.2\\cluster\\config.yaml 
+    901  ip addr show enp130s0f0
+    902  vim \\etc\\ceph\\ceph.conf 
+    903  systemctl restart ceph-mon@icp-71
+    904  ceph -s
+    905  systemctl status ceph-mon@icp-71
+    906  systemctl status ceph-mon@icp-71 -l
+    907  vim \\var\\log\\ceph\\ceph-mon.icp-71.log
+    908  vim \\etc\\ceph\\ceph.d\\ceph.conf 
+    909  vim \\etc\\ceph\\ceph.conf 
+    910  vim \\etc\\ceph\\ceph.d\\ceph.conf 
+    911  systemctl restart ceph-mon@icp-71
+    912  systemctl reset-failed ceph-mon@icp-71.service
+    913  systemctl start ceph-mon@icp-71.service
+    914  systemctl status ceph-mon@icp-71
+    915  ceph -s
+    916  vim \\var\\log\\ceph\\ceph-mon.icp-71.log
+    917  ip addr show eno1
+    918  calicoctl  node status
+    919  kubectl get pod -n kube-system -o wide|grep calico
+    920  kubectl delete pod calico-node-amd64-5hpxv -n kube-system
+    921  kubectl get pod -n kube-system -o wide|grep calico
+    922  kubectl describe pod calico-node-amd64-dmhqr  -n kube-system
+    923  kubectl logs calico-node-amd64-dmhqr  -n kube-system
+    924  kubectl logs calico-node-amd64-dmhqr  -n kube-system calico-node-amd64
+    925  kubectl get pod -n kube-system -o wide|grep calico
+    926  kubectl describe pod calico-node-amd64-dmhqr  -n kube-system
+    927  kubectl get pod -n kube-system -o wide|grep calico
+    928  ip addr show enp130s0f0
+    929  ip addr show enp9s0f0
+    930  kubectl get pod -n kube-system -o wide|grep calico
+    931  vim \\opt\\ibm-cloud-private-2.1.0.2\\cluster\\config.yaml 
+    932  ip addr show enp130s0f0
+    933  kubectl get pod -n kube-system -o wide|grep calico
+    934  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp130s0f0
+    935  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp9s0f0
+    936  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp130s0f0
+    937  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp9s0f0
+    938  systemctl restart network
+    939  docker ps|grep ucarp
+    940  docker kill 8bf733162a35 d67da2f2be9d
+    941  ip addr show eno1
+    942  calicoctl  node status
+    943  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp130s0f0
+    944  ip addr show eno1
+    945  calicoctl  node status
+    946  ceph -s
+    947  vim \\etc\\ceph\\ceph.d\\ceph.conf 
+    948  vim \\etc\\ceph\\ceph.conf 
+    949  systemctl restart ceph-mon@icp-71
+    950  systemctl reset-failed ceph-mon@icp-71.service
+    951  systemctl restart ceph-mon@icp-71
+    952  ceph -s
+    953  vim \\etc\\sysconfig\\network-scripts\\ifcfg-enp130s0f0
+    954  calicoctl node status
+    955  ssh icp-59
+    956  calicoctl node status
+    957  ssh icp-56
+    958  calicoctl node status
+    959  ceph -s
+    960  ceph osd treee
+    961  ceph osd tree
+    962  ssh icp-61
+    963  ssh icp-57
+    964  calicoctl node status
+    965  ssh icp-59
+    966  calicoctl node status
+    967  ssh icp-59
+    968  calicoctl node status
+    969  ssh icp-59
+    970  calicoctl node status
+    971  ssh icp-56
+    972  calicoctl node status
+    973  ceph -s
+    974  ceph osd tree
+    975  calicoctl node status
+    976  ssh icp-59
+    977  calicoctl node status
+    978  calicoctl get workloadEndpoint
+    979  calicoctl node status
+    980  calicoctl get workloadEndpoint
+    981  calicoctl get 
+    982  calicoctl get bgpPeer
+    983  ceph -s
+    984  calicoctl --help
+    985  calicoctl get
+    986  calicoctl get bgpPeer
+    987  calicoctl get ipam
+    988  calicoctl ipam
+    989  calicoctl ipam --help
+    990  calicoctl ipam  show
+    991  calicoctl --help
+    992  calicoctl get workloadEndpoint
+    993  ss -ntlp|grep etcd
+    994  calicoctl get workloadEndpoint --help
+    995  kubectl get pod -n kube-system -o wide|grep calico
+    996  calicoctl node status
+    997  kubectl log calico-node-amd64-gkf7m -n kube-system
+    998  kubectl log calico-node-amd64-gkf7m -n kube-system calico-node-amd64
+    999  calicoctl node status
+'''
+tags: []
+isStarred: false
+isTrashed: false

@@ -1,0 +1,108 @@
+createdAt: "2018-05-31T02:02:20.093Z"
+updatedAt: "2018-05-31T02:03:15.765Z"
+type: "MARKDOWN_NOTE"
+folder: "66dff0cfbfde06f3d2e8"
+title: "kubernetes pod亲和性"
+content: '''
+  # kubernetes pod亲和性
+  
+  Pod Affinity
+  通过《K8S调度之节点亲和性》，我们知道怎么在调度的时候让pod灵活的选择node，但有些时候我们希望调度能够考虑pod之间的关系，而不只是pod与node的关系。于是在kubernetes 1.4的时候引入了pod affinity。
+  
+  为什么有这样的需求呢？举个例子，我们系统服务 A 和服务 B 尽量部署在同个主机、机房、城市，因为它们网络沟通比较多；再比如，我们系统数据服务 C 和数据服务 D 尽量分开，因为如果它们分配到一起，然后主机或者机房出了问题，会导致应用完全不可用，如果它们是分开的，应用虽然有影响，但还是可用的。
+  
+  pod affinity 可以这样理解：调度的时候选择（或者不选择）这样的节点 N ，这些节点上已经运行了满足条件 X。条件 X 是一组 label 选择器，它必须指明作用的 namespace（也可以作用于所有的 namespace），因为 pod 是运行在某个 namespace 中的。
+  
+  这里的X指的是集群中的节点、机架、区域等概念，通过kubernetes内置节点标签中的key来进行声明。这个key的名字为topologyKey，意为表达节点所属的topology范围：
+  
+  kubernetes.io/hostname
+  failure-domain.beta.kubernetes.io/zone
+  failure-domain.beta.kubernetes.io/region
+  和 node affinity 相似，pod affinity 也有 requiredDuringSchedulingIgnoredDuringExecution 和 preferredDuringSchedulingIgnoredDuringExecution，意义也和之前一样。如果有使用亲和性，在 affinity 下面添加 podAffinity 字段，如果要使用互斥性，在 affinity 下面添加 podAntiAffinity 字段。
+  
+  先定义一个参照目标pod：
+  ```
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: pod-flag
+    labels:
+      security: "S1"
+      app: "nginx"
+  spec:
+    containers:
+    - name: nginx
+      image: nginx
+  ```
+  Pod亲和性调度
+  下面是一个亲和性调度的示例
+  ```
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: pod-affinity
+  spec:
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: security
+              operator: In
+              values:
+              - S1
+          topologyKey: kubernetes.io/hostname
+    containers:
+    - name: with-pod-affinity
+      image: gcr.io/google_containers/pause:2.0
+  ```
+  创建后可以看到这个pod与上面那个参照的pod位于同一个node上，另外，如果将这个node上的kubernetes.io/hostname标签干掉，将会发现pod会一直处于pending状态，这是因为找不到满足条件的node了。
+  
+  pod互斥性调度
+  下面是一个互斥性调度的示例：
+  ```
+  apiVersion: v1
+  kind: Pod
+  metadata:
+    name: with-pod-affinity
+  spec:
+    affinity:
+      podAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+            - key: security
+              operator: In
+              values:
+              - S1
+          topologyKey: "failure-domain.beta.kubernetes.io/zone"
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: security
+                operator: In
+                values:
+                - S2
+            topologyKey: kubernetes.io/hostname
+    containers:
+    - name: with-pod-affinity
+      image: gcr.io/google_containers/pause:2.0
+  ```
+  这个例子要求这个新pod与security=S1的pod为同一个zone，但是不与security=S2的pod为同一个node。
+  
+  原则上，topologyKey可以使用任何合法的标签Key赋值，但是出于性能和安全方面的考虑，对topologyKey有如下限制：
+  
+  在pod亲和性和RequiredDuringScheduling的pod互斥性的定义中，不允许使用空的topologyKey
+  如果admission controller包含了LimitPodHardAntiAffinityTopology，那么针对RequiredDuringScheduling的pod互斥性定义就被限制为kubernetes.io/hostname，要使用自定义的topologyKey，就要改写或禁用该控制器
+  在PerferredDuringScheduling类型的Pod互斥性定义中，空的topologyKey会被解释为kubernetes.io/hostname、failure-domain.beta.kubernetes.io/zone及failure-domain.beta.kubernetes.io/region的组合
+  podAffinity规则设置的注意事项：
+  
+  在labelSelector和topologyKey同级，还可以定义namespaces列表，表示匹配哪些namespace里面的pod，默认情况下，会匹配定义的pod所在的namespace，如果定义了这个字段，但是它的值为空，则匹配所有的namespaces。
+  所有关联requiredDuringSchedulingIgnoredDuringExecution的matchExpressions全都满足之后，系统才能将pod调度到某个node上。
+'''
+tags: []
+isStarred: false
+isTrashed: false
